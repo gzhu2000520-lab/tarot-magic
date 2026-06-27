@@ -1,0 +1,9 @@
+.claude/
+.wrangler/
+*.json
+!tarot_data.json
+!tarot_meanings.json
+!tarot_advanced.json
+!tarot_backup.json
+*.txt
+!README.md
