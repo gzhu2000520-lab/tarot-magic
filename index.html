@@ -1,0 +1,2099 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>神秘塔罗 · 命运之牌</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+@font-face { font-family: 'SerifDisplay'; src: local('Georgia'), local('SimSun'), local('STSong'), local('NSimSun'); }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: 'Georgia', 'SimSun', 'STSong', 'SerifDisplay', serif;
+  background: #1a0a2e; color: #e8d5b7;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+  line-height: 1.7;
+}
+
+/* ========== 星光粒子背景 ========== */
+#particle-canvas {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none;
+}
+
+/* ========== 每日一牌 ========== */
+#daily-card {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 120;
+  background: linear-gradient(180deg, rgba(26,10,46,0.98) 0%, rgba(26,10,46,0.85) 100%);
+  padding: 8px 16px; text-align: center;
+  transition: all 0.4s ease; overflow: hidden;
+}
+#daily-card.hidden { max-height: 0; padding: 0; opacity: 0; pointer-events: none; }
+#daily-card.collapsed { max-height: 42px; }
+.daily-inner {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; max-width: 700px; margin: 0 auto;
+  font-size: 13px; letter-spacing: 1px;
+}
+.daily-label { color: #c9a96e; font-weight: bold; letter-spacing: 3px; white-space: nowrap; }
+.daily-name { color: #e8d5b7; font-weight: bold; }
+.daily-fortune { color: #c9b896; font-style: italic; flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.daily-close {
+  background: none; border: none; color: #6b5b7a;
+  font-size: 16px; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.daily-close:hover { color: #c9a96e; }
+
+/* ========== 问题输入区 ========== */
+#question-area {
+  position: fixed; top: 42px; left: 0; right: 0; z-index: 110;
+  text-align: center; padding: 24px 16px 36px;
+  background: linear-gradient(180deg, rgba(26,10,46,0.98) 0%, rgba(26,10,46,0.85) 70%, rgba(26,10,46,0.3) 100%);
+  transition: all 0.5s ease;
+}
+#question-area.compact {
+  padding: 8px 16px 32px;
+  background: linear-gradient(180deg, rgba(26,10,46,0.96) 0%, rgba(26,10,46,0.7) 70%, rgba(26,10,46,0.15) 100%);
+}
+#question-label {
+  font-size: 16px; color: #c9a96e; letter-spacing: 4px;
+  margin-bottom: 12px; text-shadow: 0 0 14px rgba(201,169,110,0.35);
+  transition: all 0.5s ease;
+}
+#question-area.compact #question-label {
+  font-size: 13px; margin-bottom: 0; letter-spacing: 2px;
+}
+#question-form {
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  max-width: 560px; margin: 0 auto; flex-wrap: wrap;
+  transition: all 0.5s ease;
+}
+#question-area.compact #question-form { display: none; }
+#question-input {
+  flex: 1; min-width: 200px; padding: 11px 16px;
+  border: 1px solid #8a6abf; border-radius: 24px;
+  background: rgba(45,27,78,0.6); color: #e8d5b7;
+  font-size: 14px; font-family: inherit; letter-spacing: 1px;
+  outline: none; transition: all 0.35s;
+  line-height: 1.5;
+}
+#question-input::placeholder {
+  color: #8a7a8a; letter-spacing: 1px; font-size: 13px;
+}
+#question-input:focus {
+  border-color: #c9a96e; box-shadow: 0 0 18px rgba(201,169,110,0.25);
+  background: rgba(45,27,78,0.8);
+}
+#start-btn {
+  padding: 11px 28px; border: 1px solid #8a6abf; border-radius: 24px;
+  background: rgba(138,106,191,0.12); color: #c9a96e;
+  font-size: 14px; letter-spacing: 4px; cursor: pointer;
+  font-family: inherit; transition: all 0.35s; white-space: nowrap;
+}
+#start-btn:hover {
+  background: rgba(138,106,191,0.25);
+  box-shadow: 0 0 22px rgba(138,106,191,0.4);
+  border-color: #9b7fd4;
+}
+
+/* API 设置 */
+#api-toggle {
+  display: inline-block; margin-top: 8px; padding: 2px 10px;
+  background: transparent; border: none; color: #6b5b7a;
+  font-size: 12px; cursor: pointer; font-family: inherit;
+  letter-spacing: 2px; transition: all 0.3s;
+}
+#api-toggle:hover { color: #c9a96e; }
+#api-toggle.active { color: #c9a96e; }
+#api-toggle .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle; transition: all 0.3s;
+}
+#api-toggle .dot.off { background: #5a4a6a; }
+#api-toggle .dot.on { background: #6fcf97; box-shadow: 0 0 6px rgba(111,207,151,0.5); }
+#api-panel {
+  display: none; max-width: 520px; margin: 10px auto 0;
+  text-align: left; gap: 8px; flex-wrap: wrap;
+  justify-content: center; align-items: center;
+  transition: all 0.35s ease;
+}
+#api-panel.show { display: flex; }
+#api-panel input {
+  padding: 8px 14px; border: 1px solid rgba(138,106,191,0.4); border-radius: 16px;
+  background: rgba(26,10,46,0.6); color: #c9b896;
+  font-size: 12px; font-family: inherit; outline: none;
+  transition: all 0.3s; letter-spacing: 0.5px;
+}
+#api-panel input:focus {
+  border-color: #c9a96e; box-shadow: 0 0 10px rgba(201,169,110,0.2);
+}
+#api-endpoint { flex: 2; min-width: 180px; }
+#api-key { flex: 1; min-width: 120px; }
+#api-save-btn {
+  padding: 8px 18px; border: 1px solid #8a6abf; border-radius: 16px;
+  background: rgba(138,106,191,0.1); color: #c9a96e;
+  font-size: 12px; letter-spacing: 2px; cursor: pointer;
+  font-family: inherit; transition: all 0.3s; white-space: nowrap;
+}
+#api-save-btn:hover {
+  background: rgba(138,106,191,0.25);
+  box-shadow: 0 0 14px rgba(138,106,191,0.35);
+}
+#api-status {
+  font-size: 11px; color: #8a7a8a; letter-spacing: 1px;
+  margin-left: 8px; white-space: nowrap;
+}
+
+#question-display {
+  display: none; text-align: center;
+}
+#question-area.compact #question-display { display: block; }
+#question-display .q-text {
+  font-size: 14px; color: #c9b896; letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(201,184,150,0.2);
+}
+#question-display .q-text span {
+  color: #c9a96e; font-style: italic;
+}
+#change-q-btn {
+  margin-left: 10px; padding: 3px 14px; border: 1px solid #8a6abf; border-radius: 16px;
+  background: transparent; color: #8a7a8a; font-size: 12px;
+  cursor: pointer; font-family: inherit; letter-spacing: 1px;
+  transition: all 0.3s;
+}
+#change-q-btn:hover {
+  color: #c9a96e; border-color: #9b7fd4;
+  box-shadow: 0 0 10px rgba(138,106,191,0.25);
+}
+
+/* ========== 顶部信息栏 ========== */
+#top-bar {
+  position: fixed; top: 144px; left: 0; right: 0; z-index: 100;
+  text-align: center; padding: 14px 16px 12px;
+  background: linear-gradient(180deg, rgba(26,10,46,0.92) 0%, rgba(26,10,46,0.5) 75%, transparent 100%);
+  pointer-events: none;
+  transition: top 0.5s ease;
+}
+#top-bar.compact-qa { top: 74px; }
+#top-bar h1 {
+  font-size: 22px; letter-spacing: 8px; color: #c9a96e;
+  text-shadow: 0 0 24px rgba(201,169,110,0.5), 0 0 48px rgba(201,169,110,0.2);
+  margin-bottom: 8px; font-weight: normal;
+}
+#draw-info {
+  font-size: 15px; color: #c9b896; margin-bottom: 10px;
+  text-shadow: 0 0 10px rgba(201,184,150,0.3);
+  letter-spacing: 2px;
+}
+#mode-selector { display: flex; justify-content: center; align-items: center; gap: 14px; pointer-events: auto; flex-wrap: wrap; }
+#spread-select {
+  padding: 8px 16px; border: 1px solid #8a6abf; border-radius: 24px;
+  background: rgba(45,27,78,0.6); color: #c9a96e;
+  font-size: 13px; font-family: inherit; letter-spacing: 2px;
+  cursor: pointer; outline: none; transition: all 0.35s;
+  max-width: 260px; text-overflow: ellipsis;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a96e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  padding-right: 32px;
+}
+#spread-select:hover {
+  border-color: #9b7fd4; box-shadow: 0 0 14px rgba(138,106,191,0.3);
+}
+#spread-select option {
+  background: #2d1b4e; color: #e8d5b7;
+}
+.mode-btn {
+  padding: 8px 28px; border: 1px solid #8a6abf; border-radius: 24px;
+  background: transparent; color: #c9a96e; font-size: 14px;
+  cursor: pointer; transition: all 0.35s; font-family: inherit;
+  letter-spacing: 3px; line-height: 1.6;
+}
+.mode-btn.active, .mode-btn:hover {
+  background: rgba(138,106,191,0.18);
+  box-shadow: 0 0 22px rgba(138,106,191,0.35);
+  border-color: #9b7fd4;
+}
+
+/* ========== 牌桌区域 ========== */
+#table-wrap {
+  position: fixed; top: 224px; bottom: 80px;
+  left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 900px;
+  z-index: 10; overflow-y: auto; overflow-x: hidden;
+  max-height: 80vh;
+  padding: 20px 20px 36px;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  transition: top 0.5s ease;
+}
+#table-wrap.compact-qa { top: 168px; max-height: calc(80vh - 56px); }
+#table-wrap::-webkit-scrollbar { width: 4px; }
+#table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(139,115,85,0.3); border-radius: 2px;
+}
+#table-wrap::-webkit-scrollbar-track { background: transparent; }
+#cards-track {
+  display: grid;
+  grid-template-columns: repeat(3, 120px);
+  gap: 16px;
+  max-width: 440px; margin: 0 auto;
+  justify-content: center; align-items: start;
+  min-height: 200px;
+}
+
+/* ========== 单张牌 ========== */
+.card-slot {
+  width: 120px; height: 180px;
+  transition: transform 0.25s ease, opacity 0.3s ease;
+  cursor: pointer; position: relative;
+  flex-shrink: 0;
+}
+.card-slot:hover {
+  transform: scale(1.08); z-index: 30;
+}
+.card-slot.selectable:hover .card-back {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 20px rgba(139,115,85,0.5);
+}
+.card-slot:active { transform: scale(0.96); }
+
+/* 点击弹出动画 */
+.card-slot.popping {
+  animation: card-pop 0.45s ease-out forwards;
+}
+@keyframes card-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.15) translateY(-6px); }
+  100% { transform: scale(1); }
+}
+
+.card-inner {
+  width: 100%; height: 100%; position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.25,0.1,0.25,1);
+}
+.card-slot.flipped .card-inner { transform: rotateY(180deg); }
+.card-face, .card-back {
+  position: absolute; width: 100%; height: 100%;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border-radius: 12px; overflow: visible;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 10px rgba(139,115,85,0.1);
+}
+.card-back {
+  background: #8B7355;
+  border: 2px solid #A68B6F;
+  display: flex; align-items: center; justify-content: center;
+}
+.card-back img { display: none; }
+.card-back::after { display: none; }
+
+/* 翻面后金色光扫 */
+.card-slot.flipped .card-face::after {
+  content: '';
+  position: absolute; inset: -4px; z-index: 10;
+  border-radius: 16px;
+  pointer-events: none;
+  animation: light-sweep 0.8s ease-out forwards;
+}
+@keyframes light-sweep {
+  0% { box-shadow: 0 0 0px rgba(201,169,110,0), inset 0 0 0px rgba(201,169,110,0); }
+  25% { box-shadow: 0 0 30px rgba(201,169,110,0.9), 0 0 60px rgba(201,169,110,0.5), inset 0 0 30px rgba(201,169,110,0.3); }
+  100% { box-shadow: 0 0 0px rgba(201,169,110,0), inset 0 0 0px rgba(201,169,110,0); }
+}
+.card-face {
+  transform: rotateY(180deg);
+  border: 2px solid #A68B6F;
+}
+.card-face img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+
+/* 选中高亮 —— 暖棕光晕 */
+.card-slot.selectable .card-back {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 18px rgba(139,115,85,0.25);
+  animation: glow-pulse 2.2s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 16px rgba(139,115,85,0.2); }
+  50% { box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 32px rgba(139,115,85,0.5); }
+}
+.card-slot.flipped { pointer-events: none; }
+.card-slot.flipped .card-face {
+  border-color: #c9a96e;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 22px rgba(201,169,110,0.5);
+}
+
+/* ========== 结果展示区 ========== */
+#result-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(10,4,20,0.95);
+  display: none; flex-direction: column; align-items: center;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 28px 20px 80px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  -webkit-overflow-scrolling: touch;
+}
+#result-overlay.show {
+  display: flex;
+  animation: result-fade-in 0.4s ease-out forwards;
+}
+#result-overlay > * {
+  max-width: 900px; width: 100%;
+}
+@keyframes result-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#result-title {
+  font-size: 22px; letter-spacing: 8px; color: #c9a96e;
+  text-align: center; margin-bottom: 8px;
+  text-shadow: 0 0 24px rgba(201,169,110,0.5);
+  min-height: 32px;
+}
+#result-question {
+  font-size: 14px; color: #c9b896; text-align: center;
+  margin-bottom: 18px; letter-spacing: 2px;
+  min-height: 22px;
+}
+#result-source {
+  font-size: 12px; color: #8a7a8a; text-align: center;
+  margin-bottom: 10px; letter-spacing: 1px;
+  min-height: 18px;
+}
+#result-details {
+  min-height: 60px;
+}
+#result-details .result-actions {
+  display: flex; justify-content: center; gap: 16px; margin-top: 30px; padding: 20px 0;
+}
+
+/* 综合分析区 */
+.summary-section {
+  width: 100%; max-width: 780px; margin: 30px auto 30px;
+  animation: detail-appear 0.5s ease-out backwards;
+}
+
+/* 综合分析4卡片 */
+.summary-card {
+  background: rgba(45,27,78,0.45);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.summary-card:last-child { margin-bottom: 0; }
+.summary-card-header {
+  color: #c9a96e; font-weight: bold; font-size: 16px;
+  letter-spacing: 4px; margin-bottom: 12px;
+}
+.summary-card-body {
+  color: #c9b896; font-size: 13px; line-height: 1.8;
+  letter-spacing: 1px;
+}
+
+/* 详情卡片：左图右文 */
+.result-detail {
+  position: static;
+  width: 100%; max-width: 780px; margin: 40px auto 0;
+  background: rgba(45,27,78,0.3);
+  border: 1px solid rgba(138,106,191,0.25);
+  border-radius: 18px; overflow: hidden;
+  min-height: 140px;
+  animation: detail-appear 0.5s ease-out backwards;
+}
+.result-detail:nth-child(2) { animation-delay: 0.12s; }
+.result-detail:nth-child(3) { animation-delay: 0.24s; }
+.result-detail:nth-child(4) { animation-delay: 0.36s; }
+.result-detail:nth-child(5) { animation-delay: 0.48s; }
+@keyframes detail-appear {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.detail-layout {
+  display: flex; gap: 0;
+}
+
+/* 左侧牌面图 */
+.detail-image-col {
+  flex-shrink: 0; width: 140px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 22px 16px 16px;
+  background: rgba(26,10,46,0.4);
+  border-right: 1px solid rgba(138,106,191,0.15);
+}
+.detail-image-col img {
+  width: 105px; height: 166px; object-fit: cover;
+  border-radius: 10px; border: 2px solid #c9a96e;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.5), 0 0 16px rgba(201,169,110,0.3);
+}
+.detail-image-col .detail-tag {
+  margin-top: 10px; padding: 3px 12px;
+  border: 1px solid #8a6abf; border-radius: 12px;
+  font-size: 10px; color: #b8a0d8; letter-spacing: 2px;
+  text-align: center;
+}
+
+/* 右侧内容 */
+.detail-content-col {
+  flex: 1; min-width: 0; padding: 18px 20px 4px;
+}
+.detail-header-info {
+  margin-bottom: 12px; padding-bottom: 12px;
+  border-bottom: 1px solid rgba(138,106,191,0.15);
+}
+.detail-header-name {
+  font-size: 22px; color: #c9a96e; letter-spacing: 5px;
+  font-weight: bold; margin-bottom: 2px;
+}
+.detail-header-en {
+  font-size: 13px; color: #8a7a8a; letter-spacing: 2px;
+  font-style: italic; margin-bottom: 2px;
+}
+
+.detail-modules { }
+.detail-module {
+  position: static;
+  margin-bottom: 10px;
+  background: rgba(26,10,46,0.3);
+  border-radius: 10px;
+  border-left: 3px solid transparent;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+.detail-module:nth-child(1) { border-left-color: #8a6abf; }
+.detail-module:nth-child(2) { border-left-color: #c9a96e; }
+.detail-module:nth-child(3) { border-left-color: #6b4d9a; }
+.detail-module:nth-child(4) { border-left-color: #8a6abf; }
+.detail-module:nth-child(5) { border-left-color: #c9a96e; }
+.detail-module:nth-child(6) { border-left-color: #d4a574; }
+.detail-module:nth-child(7) { border-left-color: #c9a96e; }
+
+/* 折叠面板头部 */
+.module-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px; letter-spacing: 2px; font-weight: bold;
+  color: #b8a0d8;
+  transition: all 0.25s ease;
+  margin: 0;
+}
+.module-header:hover { background: rgba(138,106,191,0.1); }
+.module-header .m-icon { font-size: 16px; flex-shrink: 0; }
+.module-header .m-arrow {
+  margin-left: auto; font-size: 12px;
+  transition: transform 0.25s ease;
+  opacity: 0.6;
+}
+.detail-module.open .module-header .m-arrow {
+  transform: rotate(90deg);
+}
+.detail-module:nth-child(1) .module-header { color: #b8a0d8; }
+.detail-module:nth-child(2) .module-header { color: #c9a96e; }
+.detail-module:nth-child(3) .module-header { color: #9b7fd4; }
+.detail-module:nth-child(4) .module-header { color: #b8a0d8; }
+.detail-module:nth-child(5) .module-header { color: #c9a96e; }
+.detail-module:nth-child(6) .module-header { color: #d4a574; }
+.detail-module:nth-child(7) .module-header { color: #c9a96e; }
+
+/* 折叠面板内容 */
+.module-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s ease;
+  padding: 0 16px;
+}
+.detail-module.open .module-body {
+  max-height: 600px;
+  padding: 0 16px 14px;
+}
+.module-body p {
+  font-size: 13px; color: #c9c0b5; line-height: 1.85;
+  letter-spacing: 0.5px; margin: 0;
+}
+
+/* 占卜结论 —— 默认展开 + 高亮 */
+.detail-module.conclusion {
+  border-left-color: #c9a96e !important;
+  background: rgba(201,169,110,0.08);
+  border: 1px solid rgba(201,169,110,0.3);
+  border-left: 3px solid #c9a96e;
+}
+.detail-module.conclusion .module-header {
+  color: #c9a96e;
+}
+.detail-module.conclusion .module-body p {
+  font-size: 14px;
+}
+
+/* ========== 加载动画 ========== */
+#loading {
+  position: fixed; inset: 0; z-index: 999;
+  background: #1a0a2e; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transition: opacity 0.8s;
+}
+#loading.fade { opacity: 0; pointer-events: none; }
+#loading .spinner {
+  width: 48px; height: 48px;
+  border: 2px solid rgba(139,115,85,0.2);
+  border-top-color: #c9a96e; border-right-color: rgba(201,169,110,0.4);
+  border-radius: 50%;
+  animation: star-spin 1.2s ease-in-out infinite;
+  margin-bottom: 22px;
+  position: relative;
+}
+#loading .spinner::before,
+#loading .spinner::after {
+  content: ''; position: absolute;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #c9a96e;
+}
+#loading .spinner::before { top: -3px; left: 50%; margin-left: -3px; animation: star-dot 1.2s ease-in-out infinite; }
+#loading .spinner::after { bottom: -3px; left: 50%; margin-left: -3px; animation: star-dot 1.2s ease-in-out 0.6s infinite; }
+@keyframes star-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes star-dot {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+#loading .loading-text {
+  color: #c9a96e; letter-spacing: 4px; font-size: 15px;
+  animation: text-fade-pulse 2s ease-in-out infinite;
+}
+@keyframes text-fade-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* AI 加载指示器 */
+#ai-loading {
+  display: none; flex-direction: column; align-items: center;
+  padding: 60px 20px; text-align: center;
+}
+#ai-loading.show { display: flex; }
+#ai-loading .ai-spinner {
+  width: 44px; height: 44px;
+  border: 2px solid rgba(139,115,85,0.2);
+  border-top-color: #c9a96e; border-right-color: rgba(201,169,110,0.4);
+  border-radius: 50%;
+  animation: ai-spin 0.8s ease-in-out infinite;
+  margin-bottom: 18px;
+  position: relative;
+}
+#ai-loading .ai-spinner::before {
+  content: ''; position: absolute; inset: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,169,110,0.15);
+  animation: ai-ring 1.5s ease-in-out infinite;
+}
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+@keyframes ai-ring {
+  0%, 100% { transform: scale(0.8); opacity: 0.3; }
+  50% { transform: scale(1.3); opacity: 0.8; }
+}
+#ai-loading p { color: #c9a96e; letter-spacing: 3px; font-size: 14px; }
+#ai-loading .ai-hint { color: #8a7a8a; font-size: 12px; letter-spacing: 1px; margin-top: 6px; }
+
+/* 简易模式容器 */
+#result-cards-simple {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 28px; margin-bottom: 30px; max-width: 900px;
+}
+.result-card-simple {
+  display: flex; flex-direction: column; align-items: center;
+  width: 160px; animation: card-appear 0.6s ease-out backwards;
+}
+.result-card-simple:nth-child(2) { animation-delay: 0.15s; }
+.result-card-simple:nth-child(3) { animation-delay: 0.3s; }
+.result-card-simple:nth-child(4) { animation-delay: 0.45s; }
+.result-card-simple:nth-child(5) { animation-delay: 0.6s; }
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(40px) scale(0.85); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.result-card-simple img {
+  width: 130px; height: 206px; object-fit: cover;
+  border-radius: 12px; border: 2px solid #8a6abf;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.6), 0 0 20px rgba(138,106,191,0.25);
+  margin-bottom: 14px;
+}
+.result-card-simple .card-name {
+  font-size: 16px; color: #c9a96e; font-weight: bold;
+  letter-spacing: 4px; margin-bottom: 8px;
+}
+.result-card-simple .card-meaning {
+  font-size: 12px; color: #b8a88a; text-align: center;
+  line-height: 1.8; max-width: 150px;
+}
+
+.result-actions {
+  position: static;
+  display: flex; justify-content: center; align-items: center;
+  gap: 16px; flex-wrap: wrap;
+  margin: 30px auto; padding: 0 20px;
+  max-width: 780px; width: 100%;
+  min-height: 50px;
+  flex-shrink: 0;
+}
+#reshuffle-btn {
+  margin: 0; padding: 14px 48px;
+  border: 2px solid #8a6abf; border-radius: 32px;
+  background: rgba(138,106,191,0.08); color: #c9a96e;
+  font-size: 17px; letter-spacing: 5px; cursor: pointer;
+  font-family: inherit; transition: all 0.35s;
+  line-height: 1.6;
+}
+#reshuffle-btn:hover {
+  background: rgba(138,106,191,0.22);
+  box-shadow: 0 0 28px rgba(138,106,191,0.4);
+  transform: scale(1.04);
+}
+#share-btn {
+  margin: 0; padding: 10px 32px;
+  border: 1px solid #c9a96e; border-radius: 28px;
+  background: rgba(201,169,110,0.08); color: #c9a96e;
+  font-size: 14px; letter-spacing: 3px; cursor: pointer;
+  font-family: inherit; transition: all 0.35s;
+  line-height: 1.5;
+}
+#share-btn:hover {
+  background: rgba(201,169,110,0.2);
+  box-shadow: 0 0 20px rgba(201,169,110,0.35);
+}
+
+/* 收藏按钮（解析区内） */
+.fav-star {
+  display: inline-block; margin-left: 10px; padding: 2px 6px;
+  background: none; border: 1px solid rgba(201,169,110,0.3); border-radius: 12px;
+  color: #8a7a8a; font-size: 14px; cursor: pointer;
+  transition: all 0.3s; vertical-align: middle; line-height: 1.4;
+}
+.fav-star:hover { color: #c9a96e; border-color: #c9a96e; }
+.fav-star.active { color: #c9a96e; border-color: #c9a96e; background: rgba(201,169,110,0.1); }
+
+/* 底部收藏入口 */
+#fav-entry-btn {
+  margin-left: 14px; padding: 8px 20px;
+  border: 1px solid rgba(201,169,110,0.3); border-radius: 20px;
+  background: transparent; color: #b8a88a;
+  font-size: 13px; letter-spacing: 2px; cursor: pointer;
+  font-family: inherit; transition: all 0.3s;
+}
+#fav-entry-btn:hover { color: #c9a96e; border-color: #c9a96e; }
+#fav-count { color: #c9a96e; }
+
+/* 收藏弹窗 */
+#fav-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(10,4,20,0.95);
+  display: none; flex-direction: column; align-items: center;
+  overflow-y: auto; padding: 30px 20px 40px;
+  backdrop-filter: blur(10px);
+}
+#fav-overlay.show { display: flex; }
+#fav-title {
+  font-size: 24px; color: #c9a96e; letter-spacing: 6px;
+  margin-bottom: 30px; text-shadow: 0 0 20px rgba(201,169,110,0.4);
+}
+#fav-list { width: 100%; max-width: 700px; }
+.fav-item {
+  background: rgba(45,27,78,0.35); border: 1px solid rgba(138,106,191,0.25);
+  border-radius: 14px; padding: 16px 20px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 14px;
+  transition: all 0.3s;
+}
+.fav-item:hover { border-color: rgba(201,169,110,0.3); }
+.fav-item-img {
+  width: 50px; height: 80px; object-fit: cover;
+  border-radius: 6px; border: 1px solid #c9a96e; flex-shrink: 0;
+}
+.fav-item-info { flex: 1; min-width: 0; }
+.fav-item-name { font-size: 15px; color: #c9a96e; letter-spacing: 3px; font-weight: bold; margin-bottom: 4px; }
+.fav-item-meaning { font-size: 12px; color: #b8a88a; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fav-item-date { font-size: 10px; color: #6b5b7a; letter-spacing: 1px; margin-top: 4px; }
+.fav-item-del {
+  background: none; border: 1px solid rgba(201,100,100,0.3); border-radius: 10px;
+  color: #b88a8a; font-size: 11px; cursor: pointer; padding: 4px 10px;
+  white-space: nowrap; transition: all 0.3s;
+}
+.fav-item-del:hover { background: rgba(201,100,100,0.15); border-color: #c96464; color: #c96464; }
+#fav-close-btn {
+  margin-top: 24px; padding: 12px 40px;
+  border: 1px solid #8a6abf; border-radius: 26px;
+  background: transparent; color: #c9b896; font-size: 14px; letter-spacing: 3px;
+  cursor: pointer; font-family: inherit; transition: all 0.3s;
+}
+#fav-close-btn:hover { color: #c9a96e; border-color: #c9a96e; }
+#fav-empty { text-align: center; color: #8a7a8a; font-size: 14px; letter-spacing: 2px; padding: 60px 20px; }
+
+/* 免费模型按钮 */
+#api-free-btn {
+  padding: 8px 14px; border: 1px dashed #c9a96e; border-radius: 16px;
+  background: rgba(201,169,110,0.06); color: #c9a96e;
+  font-size: 12px; letter-spacing: 1px; cursor: pointer;
+  font-family: inherit; transition: all 0.3s; white-space: nowrap;
+}
+#api-free-btn:hover {
+  background: rgba(201,169,110,0.18);
+  box-shadow: 0 0 14px rgba(201,169,110,0.3);
+  border-style: solid;
+}
+
+/* ========== 底部栏 ========== */
+#bottom-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  text-align: center; padding: 14px 12px 24px;
+  background: linear-gradient(0deg, rgba(26,10,46,0.96) 0%, rgba(26,10,46,0.55) 80%, transparent 100%);
+}
+#reset-btn {
+  padding: 12px 42px; border: 1px solid #8a6abf; border-radius: 28px;
+  background: rgba(138,106,191,0.06); color: #c9a96e;
+  font-size: 15px; letter-spacing: 4px; cursor: pointer;
+  font-family: inherit; transition: all 0.35s; line-height: 1.6;
+}
+#reset-btn:hover {
+  background: rgba(138,106,191,0.18);
+  box-shadow: 0 0 24px rgba(138,106,191,0.35);
+  border-color: #9b7fd4;
+}
+
+/* ========== 提示 ========== */
+#hint {
+  position: fixed; bottom: 88px; left: 0; right: 0; z-index: 90;
+  text-align: center; font-size: 14px; color: #8a7a6a;
+  letter-spacing: 3px; pointer-events: none;
+  opacity: 0.65; transition: opacity 0.5s;
+}
+
+/* ========== 响应式 ========== */
+/* 大屏 6 列 */
+@media (min-width: 900px) {
+  #cards-track { grid-template-columns: repeat(6, 120px); max-width: 830px; }
+}
+/* 中屏 4 列 */
+@media (min-width: 600px) and (max-width: 899px) {
+  #cards-track { grid-template-columns: repeat(4, 120px); max-width: 560px; }
+}
+@media (max-width: 899px) {
+  .result-detail { max-width: 100%; }
+  .detail-image-col { width: 120px; padding: 16px 10px 12px; }
+  .detail-image-col img { width: 88px; height: 140px; }
+  #spread-select { font-size: 12px; padding: 6px 26px 6px 10px; max-width: 220px; letter-spacing: 1px; }
+  #share-btn { padding: 8px 26px; font-size: 13px; }
+}
+/* 小屏 2 列 */
+@media (max-width: 599px) {
+  /* 问题区 */
+  #question-area { padding: 14px 8px 10px; }
+  #question-area.compact { padding: 6px 8px 10px; }
+  #question-label { font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; }
+  #question-input { min-width: 0; flex: 1; padding: 10px 10px; font-size: 12px; }
+  #question-input::placeholder { font-size: 11px; }
+  #start-btn { padding: 10px 18px; font-size: 12px; letter-spacing: 2px; }
+  #api-panel { flex-direction: column; gap: 6px; }
+  #api-endpoint, #api-key { width: 100%; min-width: auto; }
+  /* 顶部栏 */
+  #top-bar { top: 112px; padding: 10px 8px 8px; }
+  #top-bar.compact-qa { top: 58px; }
+  #top-bar h1 { font-size: 15px; letter-spacing: 4px; }
+  #draw-info { font-size: 12px; }
+  .mode-btn { padding: 5px 14px; font-size: 11px; letter-spacing: 2px; }
+  #mode-selector { gap: 6px; }
+  #spread-select { font-size: 11px; padding: 6px 28px 6px 10px; max-width: 200px; letter-spacing: 1px; background-position: right 8px center; }
+  #share-btn { padding: 8px 24px; font-size: 12px; letter-spacing: 2px; }
+  /* 牌桌 2 列 */
+  #table-wrap { top: 170px; padding: 12px 8px 24px; max-width: 100%; }
+  #table-wrap.compact-qa { top: 120px; }
+  #cards-track { grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 360px; }
+  .card-slot { width: 100%; height: auto; aspect-ratio: 0.667; max-width: 160px; justify-self: center; }
+  /* 结果详情 */
+  #result-overlay { padding: 14px 8px 60px; }
+  #result-title { font-size: 17px; letter-spacing: 4px; margin-bottom: 4px; }
+  #result-question { font-size: 12px; margin-bottom: 16px; }
+  #result-source { font-size: 10px; margin-top: -12px; margin-bottom: 14px; }
+  .result-detail { margin-bottom: 18px; border-radius: 14px; }
+  .detail-layout { flex-direction: column; }
+  .detail-image-col {
+    width: 100%; flex-direction: row; justify-content: center; gap: 12px;
+    padding: 12px 10px; border-right: none; border-bottom: 1px solid rgba(138,106,191,0.15);
+  }
+  .detail-image-col img { width: 56px; height: 90px; }
+  .detail-image-col .detail-tag { margin-top: 0; }
+  .detail-content-col { padding: 10px 12px 4px; }
+  .detail-header-name { font-size: 17px; letter-spacing: 3px; }
+  .detail-header-en { font-size: 11px; }
+  .detail-module { margin-bottom: 8px; padding: 10px 10px; }
+  .detail-module h3 { font-size: 12px; letter-spacing: 1px; }
+  .detail-module p { font-size: 12px; }
+  /* 按钮 */
+  #reshuffle-btn { padding: 11px 28px; font-size: 14px; letter-spacing: 3px; }
+  #reset-btn { padding: 10px 24px; font-size: 13px; }
+  /* 简易模式 */
+  #result-cards-simple { gap: 14px; }
+  .result-card-simple { width: 110px; }
+  .result-card-simple img { width: 90px; height: 142px; }
+  .result-card-simple .card-name { font-size: 13px; letter-spacing: 2px; }
+  .result-card-simple .card-meaning { font-size: 10px; max-width: 100px; }
+}
+</style>
+</head>
+<body>
+
+<div id="daily-card" class="collapsed">
+  <div class="daily-inner">
+    <span class="daily-label">✦ 今日一牌</span>
+    <span class="daily-name" id="daily-name"></span>
+    <span class="daily-fortune" id="daily-fortune"></span>
+    <button class="daily-close" onclick="document.getElementById('daily-card').classList.add('hidden')">×</button>
+  </div>
+</div>
+
+<div id="loading"><div class="spinner"></div><p class="loading-text">命运正在编织中…</p></div>
+
+<canvas id="particle-canvas"></canvas>
+
+<!-- ===== 问题输入区 ===== -->
+<div id="question-area">
+  <div id="question-label">✦ 命运的答案，始于你的提问 ✦</div>
+  <div id="question-form">
+    <input type="text" id="question-input" placeholder="输入你想问的问题，例如：今年我高考分数会不会很高？" maxlength="120">
+    <button id="start-btn">✦ 开始抽牌 ✦</button>
+  </div>
+  <!-- API 设置 -->
+  <button id="api-toggle"><span class="dot off"></span>AI 解析设置</button>
+  <div id="api-panel">
+    <input type="text" id="api-endpoint" placeholder="API Endpoint（例如：https://api.openai.com/v1/chat/completions）">
+    <input type="password" id="api-key" placeholder="API Key">
+    <button id="api-save-btn">保存</button>
+    <button id="api-free-btn" title="一键配置硅基流动免费模型">⚡ 免费模型</button>
+    <span id="api-status"></span>
+  </div>
+  <div id="question-display">
+    <div class="q-text">你的问题：<span id="question-text"></span></div>
+    <button id="change-q-btn">修改问题</button>
+  </div>
+</div>
+
+<div id="top-bar">
+  <h1>✦ 神秘塔罗 ✦</h1>
+  <div id="draw-info">请选择 <span id="remaining">3</span> 张牌</div>
+  <div id="mode-selector">
+    <button class="mode-btn" data-count="1">1 张</button>
+    <button class="mode-btn active" data-count="3">3 张</button>
+    <button class="mode-btn" data-count="5">5 张</button>
+    <select id="spread-select" title="选择牌阵">
+      <option value="1">单张直断 · 1张 — 聚焦核心问题</option>
+      <option value="3" selected>圣三角 · 3张 — 过去/现在/未来</option>
+      <option value="5">二择一 · 5张 — 选项A与B的对比</option>
+    </select>
+  </div>
+</div>
+
+<div id="table-wrap">
+  <div id="cards-track"></div>
+</div>
+
+<div id="hint">点击牌背选牌，滚动查看更多 →</div>
+
+<div id="bottom-bar">
+  <button id="reset-btn">✦ 重新洗牌 ✦</button>
+  <button id="fav-entry-btn" title="我的收藏">★ 我的收藏 <span id="fav-count"></span></button>
+</div>
+
+<!-- ===== 收藏弹窗 ===== -->
+<div id="fav-overlay">
+  <div id="fav-title">★ 我的收藏</div>
+  <div id="fav-list"></div>
+  <button id="fav-close-btn">关闭</button>
+</div>
+
+<!-- ===== 结果展示 ===== -->
+<div id="result-overlay">
+  <div id="result-title">✦ 命运启示 ✦</div>
+  <div id="result-question"></div>
+  <div id="result-source"></div>
+  <div id="ai-loading">
+    <div class="ai-spinner"></div>
+    <p>AI 正在为你解读命运…</p>
+    <div class="ai-hint">预计等待 5~15 秒</div>
+  </div>
+  <div id="summary-3" class="summary-section" style="display:none;"></div>
+  <div id="summary-5" class="summary-section" style="display:none;"></div>
+  <div id="result-details"></div>
+</div>
+
+<script>
+// ==================== 每日一牌 ====================
+function initDailyCard() {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const hash = today.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const card = TAROT[hash % TAROT.length];
+  const fortunes = [
+    '今天，相信你的直觉会带你走向对的路。', '一个小小的冒险可能带来意想不到的惊喜。',
+    '保持耐心，你等待的答案正在来的路上。', '放下昨天的包袱，今天是个全新的开始。',
+    '注意身边的小细节，它们藏着重要提示。', '今天适合慢下来，听听自己内心的声音。',
+    '主动迈出一步吧，宇宙会接住你的勇气。', '今天会遇到一个关键的选择——选那个让你心动的。',
+    '给自己一点温柔，你已经做得足够好了。', '今天的你会发光，不必隐藏你的独特。'
+  ];
+  const fortune = fortunes[hash % fortunes.length];
+  document.getElementById('daily-name').textContent = card.name;
+  document.getElementById('daily-fortune').textContent = '— ' + fortune;
+}
+// ==================== 收藏系统 ====================
+let favorites = [];
+try { favorites = JSON.parse(localStorage.getItem('tarot_favorites') || '[]'); } catch(e) { favorites = []; }
+
+function saveFavorites() {
+  localStorage.setItem('tarot_favorites', JSON.stringify(favorites));
+  updateFavCount();
+}
+
+function updateFavCount() {
+  const el = document.getElementById('fav-count');
+  if (el) el.textContent = favorites.length > 0 ? '(' + favorites.length + ')' : '';
+}
+
+function toggleFavorite(card, btn) {
+  const idx = favorites.findIndex(f => f.id === card.id);
+  if (idx >= 0) {
+    favorites.splice(idx, 1);
+    btn.classList.remove('active');
+    btn.textContent = '☆';
+  } else {
+    favorites.push({
+      id: card.id, name: card.name, nameEn: card.nameEn || '',
+      filename: card.filename, tag: card.tag || '塔罗',
+      meaning: card.meaning,
+      date: new Date().toISOString().slice(0, 10)
+    });
+    btn.classList.add('active');
+    btn.textContent = '★';
+    // 轻反馈动画
+    btn.style.transform = 'scale(1.3)';
+    setTimeout(() => btn.style.transform = '', 200);
+  }
+  saveFavorites();
+}
+
+function showFavorites() {
+  const overlay = document.getElementById('fav-overlay');
+  const list = document.getElementById('fav-list');
+  if (favorites.length === 0) {
+    list.innerHTML = '<div id="fav-empty">还没有收藏任何牌<br>在解析区点击 ☆ 即可收藏</div>';
+  } else {
+    list.innerHTML = favorites.map((f, i) => `
+      <div class="fav-item">
+        <img class="fav-item-img" src="photo/${f.filename}" alt="${f.name}">
+        <div class="fav-item-info">
+          <div class="fav-item-name">${f.name} ${f.nameEn ? '<span style="font-size:11px;color:#8a7a8a;">'+f.nameEn+'</span>' : ''}</div>
+          <div class="fav-item-meaning">${f.meaning}</div>
+          <div class="fav-item-date">收藏于 ${f.date}</div>
+        </div>
+        <button class="fav-item-del" onclick="event.stopPropagation();favorites.splice(${i},1);saveFavorites();showFavorites();">移除</button>
+      </div>
+    `).join('');
+  }
+  overlay.classList.add('show');
+}
+
+document.getElementById('fav-entry-btn').addEventListener('click', showFavorites);
+document.getElementById('fav-close-btn').addEventListener('click', () => {
+  document.getElementById('fav-overlay').classList.remove('show');
+});
+updateFavCount();
+
+// ==================== 用户问题 & API 配置 ====================
+let userQuestion = '';
+let apiEndpoint = '';
+let apiKey = '';
+
+// 从 localStorage 恢复 API 配置
+try {
+  apiEndpoint = localStorage.getItem('tarot_api_endpoint') || '';
+  apiKey = localStorage.getItem('tarot_api_key') || '';
+} catch(e) {}
+
+// ==================== 塔罗牌数据 ====================
+const TAROT = [
+  // ========== 大阿尔卡纳 0-21 ==========
+  {
+    id:0, filename:"card_00.jpg",
+    name:"愚者", nameEn:"The Fool",
+    meaning:"新开始，别想太多，跳就对了。你正站在一段全新冒险的起点，带着一颗啥都不怕的心，宇宙兜着底呢。",
+    tag:"大阿尔卡纳",
+    detail:{
+      imagery:"画面上有个穿得花里胡哨的年轻人站在悬崖边，满脸不在乎——脚边的小白狗在叫，像是在提醒他「喂你看路啊」。他手里捏着朵白玫瑰，肩上挎个小包袱，轻装上阵，好像随时要迈出那一步。",
+      upright:"你正站在一段全新旅程的起点，宇宙鼓励你勇敢一跃。结合你的问题来看，现在不是过度分析和等待「完美时机」的时候——有些路只有踏上去才会显现。你的直觉和热情是最好的导航，信任这个过程，即使结果不确定也值得一试。主动迈出第一步吧，哪怕只是一个小的开始。",
+      reversed:"你可能因为过度乐观而忽略了现实中的风险，或者正在逃避某个重要的责任——「自由」不是不做准备的借口。也许你在关键时刻犹豫了，害怕失败而迟迟不肯行动。转化之道：先做好最基础的功课，把冲动升级为勇气，莽撞不是真正的勇敢。",
+      attributes:"数字 0 —— 既是空无也是无限可能，0 没有起点也没有终点，代表生命的循环与永恒的重启。元素属风，思维、灵性与沟通之域。关联天王星，象征突破常规、突如其来的灵感与解放性的改变。",
+    }
+  },
+  {
+    id:1, filename:"card_01.jpg",
+    name:"魔术师", nameEn:"The Magician",
+    meaning:"你啥都有，工具在手上、本事在身上，就差一个开始。把想法变成现实，现在就是最好的时候。",
+    tag:"大阿尔卡纳",
+    detail:{
+      imagery:"桌上摆着剑、杯子、权杖和金币——四样东西整整齐齐，代表你需要的资源已经到位了。那人一手指天一手指地，头上还有个横着的8字（无限符号），意思是「天上想得到，地上就做得到」。",
+      upright:"你的能力和资源已经到位，缺的只是「开始」这个动作。结合你的问题，现在是你展现才华的最佳时机——你的意志力、技巧和沟通力都处于峰值，足以将想法变成看得见的结果。大胆表现自己，宇宙正在为你聚光灯。别等别人发现你，主动展示你的魔法。",
+      reversed:"你可能在浪费自己的天赋，空有能力却迟迟不行动。或者——你在耍小聪明、做表面功夫，甚至对自己也在「表演」。注意辨别身边的虚假承诺。转化之道：停止分散精力，先把一件小事做到极致，用扎实的成果而非漂亮的话术重新建立自信。",
+      attributes:"数字 1 —— 万物的起点，代表开创、独立与统一的力量，是所有数字之父。元素属风，沟通与智性之力。关联水星，掌管思维敏捷度、语言表达与信息的接收和传递。",
+    }
+  },
+  {
+    id:2, filename:"card_02.jpg",
+    name:"女祭司", nameEn:"The High Priestess",
+    meaning:"答案不在外面，在你心里。别急着问别人，先安静下来听听自己那个很轻的声音——它什么都知道。",
+    tag:"大阿尔卡纳",
+    detail:{
+      imagery:"她坐在两根柱子中间，一黑一白，像白天和黑夜的分界线。膝盖上搁着半卷书，脚下有个月牙——这人不是靠逻辑推出来的智慧，而是靠直觉「感受到」的。她不急着开口，但你要是安静下来，就能听见她要说的。",
+      upright:"答案不在外面，而在你的内心深处。结合你的问题来看，现在不适合强硬推动或大声宣告——相反，静下来、向内看、等待时机才是最好的策略。你的潜意识已经在整理碎片，某个「灵光一闪」的顿悟时刻即将到来。信任那些说不清理由的直觉，它们往往比逻辑更快抵达真相。",
+      reversed:"你可能正在忽视内心的声音，过度依赖理性分析和他人的意见，结果反而越来越混乱。或者，一些被隐藏的秘密正浮出水面，让你感到不安——但真相终究是好东西。转化之道：每天给自己留十分钟安静时间，不刷手机不说话，让答案自己浮上来。",
+      attributes:"数字 2 —— 二元对立与动态平衡，阴与阳、显与隐、理性与直觉之间的张力与和谐。元素属水，情感与潜意识之域。关联月亮，掌管梦境、记忆、内在节律与人类最深层的情绪潮汐。",
+    }
+  },
+  {
+    id:3, filename:"card_03.jpg",
+    name:"女皇", nameEn:"The Empress",
+    meaning:"好日子来了，该开花结果的都在冒芽。别不敢享受——你之前种下的，现在就是收获的时候。对自己好一点。",
+    tag:"大阿尔卡纳",
+    detail:{
+      imagery:"她坐在一大片金灿灿的麦田里，头上戴着十二颗星星的皇冠，靠着个心形盾牌。背后的树和瀑布哗哗地流，整个画面就一个字——「满」。到处都是生长的声音，你看着就觉得心里踏实、富足。",
+      upright:"丰饶与创造的季节到了。结合你的问题，这是一个「播种」与「收获」奇妙重叠的时期——你之前投入的爱与努力正在开花结果。请允许自己大方地享受这些成果，不必有愧疚感。同时继续用你的温暖和创造力滋养身边的人与事，你的慷慨会加倍回流。",
+      reversed:"你可能在过度付出中把自己掏空了——「先照顾别人」的模式让你忘记了滋养自己。或者创造力遭遇阻塞，你感到枯竭、没有灵感。依赖他人认可来确认自我价值是危险的。转化之道：暂停输出，把能量收回来，先把自己「喂饱」——你满溢了，自然能滋润万物。",
+      attributes:"数字 3 —— 创造、生长与表达，三位一体的和谐节奏，如同种子破土、花开、结果的自然律。元素属土，感官享受与物质丰盛之域。关联金星，掌管爱与美、艺术灵感、人际吸引与生命的甜美。",
+    }
+  },
+  {
+    id:4, filename:"card_04.jpg",
+    name:"皇帝", nameEn:"The Emperor",
+    meaning:"该立规矩了。别感情用事，用脑子管住局面——你是自己人生的老大，方向盘别给任何人。",
+    tag:"大阿尔卡纳",
+    detail:{
+      imagery:"一个穿着盔甲的人坐在石头王座上——那椅子硬邦邦的，一点都不舒服，但稳得像座山。他拿着权杖和金球，背后是连绵的红色山脉，整个气场就是「没有人能撼动他」。这不是温柔牌，这是说到做到的执行力。",
+      upright:"你需要建立秩序、划清边界。结合你的问题，现在不是感情用事的时候——用理性和结构来应对眼前的局面。拿出你的权威感：你是自己人生的主宰者，不必把方向盘交给任何人。制定一个清晰的计划，按部就班地执行，你的自信会在每一步落实中增长。",
+      reversed:"你可能在滥用权力——对他人过度控制，或者对自己过于严苛以至于失去弹性。另一种可能是你缺乏自律，生活处于失序状态，却把责任推给外部环境。转化之道：从小事开始重建秩序——哪怕是整理一个抽屉或固定一个起床时间，掌控感会一点一点回来。",
+      attributes:"数字 4 —— 四边形是最稳固的结构，四个方向、四季更替，代表秩序、安全与筑造基石的力量。元素属火，意志与行动之力——火不是冲动，是被引导的能量。关联白羊座，黄道第一个星座，拥有开创者与先锋的原初驱动力。",
+    }
+  },
+  {
+    id:5, filename:"card_05.jpg",
+    name:"教皇", nameEn:"The Hierophant",
+    meaning:"去找一个走过这条路的人问问。不需要自己瞎摸索——拜师、请教、找前辈，有人已经吃过你正在吃的苦。",
+    tag:"大阿尔卡纳",
+    detail:{
+      imagery:"他穿着大红大白的袍子坐在两根灰柱子中间，脚前跪着两个人——像是在听讲。手里举着三重十字架，表情严肃但不凶。这不是一个要你「信什么」的人，更像一个「有些道理得有人讲给你听」的长者。",
+      upright:"你正在寻求更高层面的指引——无论是通过一位导师、一个传统体系还是某种精神信仰。结合你的问题，遵循已经被验证的路径和仪式会给你带来安全感。不必独自摸索——找到那个走过这条路的人，虚心求教。知识需要传承，而你现在正站在「接收」的最佳位置上。",
+      reversed:"你可能被教条和传统束缚住了——「应该怎样做」的声音太大，让你听不见自己内心的声音。或者你对权威产生了不必要的反叛，为了反对而反对。小心那些打着「为你好」旗号试图控制你的人。转化之道：在尊重前人智慧和忠于自我之间找到只属于你的平衡点。",
+      attributes:"数字 5 —— 五感、五元素（土水风火+以太），人性与神性之间的交汇点，也象征突破舒适区的调适与成长。元素属土，是精神真理在物质世界的落地实践。关联金牛座，代表稳固的信仰体系、价值感与持久构建的力量。",
+    }
+  },
+  // ========== 大阿尔卡纳 6-21 ==========
+  {id:6,filename:"card_06.jpg",name:"恋人",nameEn:"The Lovers",tag:"大阿尔卡纳",meaning:"重要的不是选哪个，而是选了之后你会变成谁。两条路都在你面前——选那个让你心砰砰跳的，而不是那个看起来最安全的。",detail:{imagery:"天上有天使展开翅膀，底下一男一女坦诚相对——不是那种坦诚，是真的不藏着掖着的那种。远处有棵树、有条蛇、还有座火山，整个画面在说：爱和欲望、选择和代价，都搅在一起。你要的不是完美的选项，而是在选择里认出自己。",upright:"一段重要的关系、选择或价值认同正在浮现。结合你的问题来看，这不仅是关于「选什么」，更是关于「你是谁」。如果涉及感情：你遇到了一个能唤醒你真实自我的人，或是你和伴侣正站在更深的承诺面前——相信那份吸引不是偶然。如果涉及学业或事业：两条路摆在眼前，一条安全但平庸，一条未知但有生命力——恋人的建议不是「选对的」，而是「选真的」。如果涉及自我成长：你正在整合自己内在的男性面与女性面，逻辑与直觉开始对话而非对立——这是心灵成熟的标志。",reversed:"你可能陷入了选择瘫痪，或是在一段关系中失去了自己的边界。如果你反复在「要不要分手、换工作、做决定」中挣扎：不是信息不够，而是你在等待一个不存在的保证。先把「错了怎么办」放一放，问问自己「不选的话，五年后我会后悔什么」。如果你在关系中过度迎合对方而忽略了自己的需求：今天写下一件你为了维持和谐而放弃的事，然后问自己——这个代价我愿意付多久？失衡的爱不是爱，是自我的慢性消耗。",attributes:"数字6——在毕达哥拉斯体系中，6是第一个完美数，等于其真因数之和1+2+3，象征和谐、平衡与责任——这与恋人牌强调的「选择即承诺」高度一致。元素属风，主导思维、沟通与分辨——爱需要看清，不只是感受。对应星座双子座，代表二元性的张力与整合、信息交换、以及灵魂的「双生」面向。这对你的问题意味着：你面对的不是一个简单的「好与坏」选择，而是两种都包含部分真相的路径，关键不是消除矛盾而是学会与矛盾共存。"}},
+  {id:7,filename:"card_07.jpg",name:"战车",nameEn:"The Chariot",tag:"大阿尔卡纳",meaning:"别想了，上。你现在需要的不是更多的分析，是一脚油门踩下去。混乱里有条路，抓得住的就是赢家。",detail:{imagery:"一个人站在战车上，头顶是星空，但他手里没拉缰绳——车前的两头兽一黑一白，没被绑着，居然乖乖待着。秘密是：他靠的不是绳子，是意志。整个画面都在说「内心统一了，外界自然会让你过去」。",upright:"你正进入一段需要高度自律与决断力的时期。结合你的问题来看，局势正在加速，混乱中有一个清晰的方向等你抓住。如果涉及学业：你需要在多个任务间快速切换，时间管理不是技巧问题而是优先级问题——把你最恐惧的那门功课放在每天的第一件事，先吃掉那只青蛙。如果涉及事业：竞争加剧但你的优势在于持久力而非爆发力，对手会疲倦而你不会——保持节奏就是你的武器。如果涉及感情：一段关系可能经历短暂的压力测试，比如异地、误解、外部干扰——这不是结束的信号而是结构加固的过程。如果涉及自我成长：你现在最需要的是「行动的自我」战胜「怀疑的自我」，哪怕只有一次，这个记忆将成为你后续所有自信的基础。",reversed:"你可能感觉失控，行动了却不见效果，或是被内心的两种声音反复撕扯。如果你正处在「越想控制越失控」的状态：战车的逆位不是叫你踩死油门，而是检查一下你的两个「狮身人面兽」——你的野心和你的恐惧——是不是在朝不同方向拉车。先停下来，在纸上写「我想赢」和「我怕输」两行字，然后分别列出证据，你会发现它们背后往往指向同一个东西：你太在意结果了。把注意力从终点移到脚下的每一步——今天的任务完成了就是一次小胜利，积累十次你会重新感受到掌控感。",attributes:"数字7——神圣数字，跨越六个创世日后的安息与完整，也是人类意识整合的象征：七个脉轮、七种行星、一周七日。元素属水，主导情感与潜意识——战车的动力来源不是冷硬的意志力，而是情感深处那股「我必须到达」的渴望。关联巨蟹座，外壳坚硬内核柔软，城墙守护的是家的记忆——这意味着你战斗的动机与「归属感」紧密相关。这对你的问题意味着：你不是能力不够，而是情感能量分散了，收拢它比提升它更关键。"}},
+  {id:8,filename:"card_08.jpg",name:"力量",nameEn:"Strength",tag:"大阿尔卡纳",meaning:"真正的力量不是吼得大声，是稳得住。你比自己以为的更能扛——不用张牙舞爪，安安静静地把事情解决了，那才是真厉害。",detail:{imagery:"一个穿白衣的女生弯腰摸着一头大狮子的嘴——狮子那么壮，她的手指那么细，但狮子乖乖的。她头上有个无限符号，表情一点不吃力。这张画就是在说：最高级的力量看起来根本不像力量，它看起来像温柔。",upright:"你内在有一股比你想象中更沉稳的力量正在浮现。结合你的问题来看，你不需要变成另一个人才能解决眼前的难题——你只需要更信任自己的韧性。如果涉及感情：一段关系里出现了需要耐心化解的矛盾，不是谁对谁错，而是谁先愿意放下防御——力量牌告诉你，先放下的人不是示弱而是更有力量的那一个。如果涉及学业或事业：你面对的压力不是来摧毁你的，而是来验证你已经准备好了——像那位女子一样，不是尖叫着扑上去，而是安静地接纳挑战。如果涉及自我成长：你正在学习一项最难的本领——与自己的恐惧共处而不被它驱动。",reversed:"你可能正在透支自己，或是误把控制当成了力量——对他人吼叫的时候，往往是自己最无力的时候。如果你发现自己最近脾气变差、一点小事就引爆：这不是你变坏了，而是你的「内在狮子」被忽视太久了。试着今天留二十分钟完全独处——不刷手机、不做事、不计划——只是感受身体里哪里紧绷，然后把呼吸送到那里去。如果你正用力地试图改变某个人或某件事而精疲力竭：先把「改变」换成「理解」，一天之内你会发现对方自己开始松动。",attributes:"数字8——横过来是无限符号，象征因果循环与永恒回归——力量不是一次性克服，而是持续的调频与校准。元素属火，主导意志、行动与生命力——但力量牌是火元素中最温和的表达，是烛火而非野火，是持续的温暖而非灼烧。关联狮子座，自信、慷慨与创造力——但真正的狮子座智慧不是吼得最大声，而是知道什么时候沉默。这对你的问题意味着：你不需要更多的「用力」，你需要的是更精准的「用心」。"}},
+  {id:9,filename:"card_09.jpg",name:"隐士",nameEn:"The Hermit",tag:"大阿尔卡纳",meaning:"你需要一个人的时间。不是被排挤了，是主动把外界音量调小——答案在被窝里、在散步的路上、在关了手机之后。",detail:{imagery:"一个老头站在雪山顶上，手里提着一盏灯——灯很小，只能照亮脚下这一步。他没着急赶路，因为路不是找来的，是走出来的。整个画面灰灰的，但不是压抑，是凌晨四点半那种「全世界都在睡，只有你醒着」的清醒。",upright:"你正被召唤进入一段向内探索的时期。结合你的问题来看，外界的噪音太多了——社交媒体、他人的期待、自己的焦虑——你需要一个安静的角落才能听见自己的声音。如果涉及学业：不要和别人比进度，隐士告诉你每个人的学习节奏不同，你需要的不是更多的资料而是更深的理解——把一本书读透赛过浏览十本。如果涉及事业：也许到了暂时退后一步审视全局的时候，你的方向对了吗？你跑的这条路是你选的还是别人塞给你的？如果涉及感情：独处不等于孤独，一段有意识的沉淀期能让下一段关系更清醒——你值得先认识自己再结识他人。",reversed:"你可能是被迫孤独——被孤立、被冷落、觉得自己格格不入——这种孤独不是隐士的智慧之灯，而是囚禁之墙。如果你正在经历这种疼痛：先承认它，「我觉得很孤独」这句话本身就有疗愈力——把它写下来或说给一个信任的人听。另一种可能是你在逃避社交，用「我不需要别人」来伪装受伤——如果你发现自己已经两周以上没有主动联系任何朋友：今天就给一个人发一条消息，不需要聊深刻的话题，一个简单的「最近怎么样」就能打破这层壳。隐士的逆位也提醒你：真理在书里也在人群中，别把独处当成逃避的借口。",attributes:"数字9——是最后的个位数，象征完成前的最后审视，也是三个「3」的叠加（3×3），代表智慧的三重结晶——思想、体验与直觉的融合。元素属土，主导务实、时间与物质世界——隐士不是飘在空中的幻想家，他是把灵性智慧落实为每一步行走的人。关联处女座，精确、分析、服务——隐士的挑剔不是对他人，而是对自己的路径选择。这对你的问题意味着：问题的答案不会从外部抵达，它已经在你内部，你需要安静下来才能提取。"}},
+  {id:10,filename:"card_10.jpg",name:"命运之轮",nameEn:"Wheel of Fortune",tag:"大阿尔卡纳",meaning:"转机来了，不是因为你做对了什么，而是时机到了。轮子在往上走，你只需要信这个节奏——抓住它。",detail:{imagery:"一个巨大的轮子飘在云上，上面坐着狮身人面兽，下面有蛇有怪物，四角还有四个带翅膀的东西守着。轮子一直在转——你在底部的时候不代表你属于底部，你在顶部的时候也别太得意。这就是命运的脾气：无常，但并非无序。",upright:"命运正在转动，一个重要的转折点或机遇即将出现。结合你的问题来看，有些事情不是你「做对了」或「做错了」的结果，而是时机到了——就像果子熟了自然会落。如果涉及事业与学业：一个意外的机会、一个突然的变动可能在前方等你，它不是赏赐也不是惩罚，是你过去累积的惯性把你推到了这里——准备好接住。如果涉及感情：一段关系可能迎来「命中注定」般的转折——重逢、和解或释然——这不是电影桥段，而是两个人各自的成长时间线终于交汇。如果涉及自我成长：你可能刚刚经历了一段低谷，牌面告诉你——轮子在往上走，你需要做的不是加速而是信任节奏。",reversed:"你可能正在经历一段「倒霉期」——计划被打乱、努力不被看见、好事总是差一步。命运之轮的逆位不意味着你被抛弃了——它意味着你正趴在轮子的底部，而底部唯一的好处是：你可以看到轮子的结构。如果你正处在这种停滞中：把这段时间当成「收集信息期」而非「失败期」——写下最近三件让你沮丧的事，然后问自己：如果它们不是「倒霉」，而是「我还需要学会的东西」，那是什么？另外，检查你是否在抗拒某种必然的改变——轮子转不动往往是因为你在拽着它不让它动。",attributes:"数字10——完成了第一个完整循环（1到10），是一个阶段的终结与新阶段的开始——在卡巴拉生命之树中，第10个质点「王国」是神性落地成物质的最后一环，说明命运的转折最终要落实到具体生活中。元素属火，代表行动力与转化——但命运之轮的火不是个人的热情，而是宇宙的发动机。关联木星，幸运、扩张与意义感——木星的幸运不是中彩票，而是视野被拉高后「哦原来是这样」的顿悟。这对你的问题意味着：视角转换就是命运的转变。"}},
+  {id:11,filename:"card_11.jpg",name:"正义",nameEn:"Justice",tag:"大阿尔卡纳",meaning:"因果从来不打折。你之前种了什么，现在就收什么。如果觉得不公平，先诚实地问问自己——你真的算清楚了吗？",detail:{imagery:"一个穿红袍的人端坐着，左手提天平、右手举剑——先称后砍，顺序很重要。她眼睛睁着，不像女祭司那样闭眼冥想——这是清醒的判断。背后的紫色帘子半拉半掩，意思是真相还有很多你没看到的部分，但正在被揭开。",upright:"一个需要你诚实面对的因果时刻到了。结合你的问题来看，你过去的选择正在显现其结果——好的坏的都不意外，只是你一直没停下来仔细看过。如果涉及学业或事业：你投入了多少，正在精确地返还给你——如果你觉得「不公平」，先检查一下自己的付出有没有自己以为的那么多。如果涉及感情：一段关系中的亏欠与付出正在被摆上来——不是要清算旧账，而是要建立新的平衡。如果涉及法律或合同事务：正义牌是积极的信号，真相和公平的结果倾向于显现。如果涉及自我成长：请诚实地做一次「人生清单」——你在哪些地方亏待了自己？在哪些地方亏待了别人？",reversed:"你可能正在面对不公的结果，或是在逃避承担自己行为的后果。如果你觉得「凭什么是我」：先别急，正义的逆位有时意味着「时机还没到」——你需要补充证据、等待更多的信息浮出水面。如果你正在回避一个应该做的道歉或责任：拖延只会让天平的倾斜越来越大，那个重量最终会压垮的不是事件而是你的自我评价。今天就迈出一步——不是解决全部，而是承认一部分：「这件事我有责任」这句话说出口的那一刻，你已经把剑从自己头顶移开了。",attributes:"数字11——被视为「更高层面的1」，在1的初始冲动上叠加了10的经验，是觉醒后的重新出发。同时11在卡巴拉中对应连接神性与现实的通道，是知识之树的隐藏质点。元素属风，主导逻辑、法律、语言——正义需要精确的表达，模糊的语言滋生不公。关联天秤座，平衡、审美与契约精神——但天秤座的高阶表达不是斤斤计较，而是「该给的一分不少，不该要的一厘不取」。这对你的问题意味着：答案藏在因果链条里，往回追溯能找到前因，往前行动能改变后果。"}},
+  {id:12,filename:"card_12.jpg",name:"倒吊人",nameEn:"The Hanged Man",tag:"大阿尔卡纳",meaning:"卡住了不是坏事，是你该换个角度看问题了。别挣扎，倒过来待一会儿——你会发现之前死活想不通的事，换个姿势就想通了。",detail:{imagery:"一个人被倒吊在木架子上，一条腿弯着一条腿吊着，表情居然很平静，甚至有点祥和。手背在后面，但身体形成的三角形和十字形有一种奇怪的秩序感。这不是受刑，是他在主动选择「颠倒一下」——在头脑不够用的时候，换直觉来接手。",upright:"宇宙正在邀请你暂时「停下来」——不是因为你做错了什么，而是因为你一直在用同一种角度看问题。结合你的问题来看，也许你需要的不是更多的行动，而是一个截然不同的视角。如果涉及感情：一段停滞的关系不是为了折磨你，而是让你体验「不控制」是什么感觉——你越是放手，越容易看清对方是真的不想走还是已经在计划离开。如果涉及学业或事业：遇到了瓶颈？不要强行突破——休息、放空、做一件完全不相关的事，答案会自己浮现。如果涉及自我成长：这是灵性层面最宝贵的一段时期——你在把一个旧版本的自己溶解掉，好让新版本成形。",reversed:"你可能觉得被牺牲了、被利用了、或者白白付出了却没有得到回报——这不是你想多了，这是倒吊人逆位的核心痛感。但逆位也在提醒你：如果你的牺牲是期望等价回报的，那它不是奉献，是交易——当交易未能达成，痛苦就成了你衡量价值的方式。如果你正在一段「只有我在付出」的关系或工作中枯萎：今天明确地划出一条边界——「这件事我可以做，但那件事不可以」——你说「不」的时候不是在伤害别人，是在保护那个还愿意付出的自己。另外，不要用受苦来证明自己的深刻——那是殉道者心态，不是灵性。",attributes:"数字12——是时间的完整循环（12个月、12宫位），也是「3×4」的乘积：三是精神的动态，四是物质的稳定，两者的乘积代表灵性在物质世界的显现。元素属水，主导情感、直觉与潜意识——倒吊人不是靠逻辑推理来觉悟的，他是浸泡在感受中慢慢被改变的。关联海王星，代表消融边界、艺术、梦境与牺牲——海王星的功课是「放下控制才能获得更深的连接」。这对你的问题意味着：答案不在你正在看的那个方向，你需要转180度——身体不能转，就转你的视角。"}},
+  {id:13,filename:"card_13.jpg",name:"死神",nameEn:"Death",tag:"大阿尔卡纳",meaning:"有东西该结束了。不是灾难——是清理。旧的不死，新的没地方长。让那个该走的人、事、习惯，真正走掉。",detail:{imagery:"一具骷髅骑着白马慢慢穿过人群，手里举着黑旗，旗上却画着白玫瑰。国王倒地、少女跪着、主教张开双臂、小孩递上花朵——每个人面对「终结」的姿态都不一样。但远处两座塔之间，太阳正在升起来。死不是结束，是换衣服。",upright:"你的生命中有一个章节正在结束，而你不必假装不难过。结合你的问题来看，死神牌不是灾难预告，而是「清除通知」——那些不再服务于你成长的人、事、模式，正在被自然地剥离。如果涉及感情：一段已经枯竭的关系可能走向终结，或者一种旧的相处模式必须死去——你越抗拒这个结束，它就拖得越痛。如果涉及事业或学业：旧的项目、岗位、学习方法已经走到了尽头，不是你的错——但你需要有勇气在废墟上画下新蓝图的第一笔。如果涉及自我成长：这是最深刻的一次自我更新——你正在蜕皮，皮肤在旧壳里发痒的时候最难受，但你不是在倒退，你是在生长。",reversed:"你可能在用尽全力阻止一个必然的改变——原地打转、反复回到旧模式、明明已经结束的事你不让它真正结束。如果你正在经历这种「欲断不断」的折磨：你的恐惧不是害怕死亡，是害怕死亡之后的「空」——那个旧事物占据的空间一旦腾出来，你不知道该放什么进去。如果你发现自己在同一类错误里循环——总爱上同一类人、总踩同一个坑——逆位死神在说：不是命运在戏弄你，是你一直没有让那个「旧自己」完整地死一次。试着写一封「告别信」给那个你想放下的旧模式，在末尾写上一句：「谢谢你曾经保护过我，但现在我可以自己走了。」",attributes:"数字13——被西方文化污名化的数字，但在塔罗中它是转化数字：12（完整的时间循环）加上1（新的开始）等于13，是圆满之后的超越。元素属水，但与普通水的柔情不同——死神的水是洪水，冲刷一切看似稳固但其实已经中空的结构。关联天蝎座，死亡与重生、深度心理、阴影整合——天蝎座的最高智慧是「我敢于融化才能重新凝固」。这对你的问题意味着：你害怕的不是死亡本身，而是失去控制——而改变的真正开始，恰恰发生在你承认「我控制不了」的那一刻。"}},
+  {id:14,filename:"card_14.jpg",name:"节制",nameEn:"Temperance",tag:"大阿尔卡纳",meaning:"别走极端。把你心里那团火和水搅拌均匀——不急、不贪、不停，刚刚好的节奏就是最好的节奏。",detail:{imagery:"一个天使站着，一只脚踩在水里，一只脚踩在岸上，两手各拿一个杯子在倒水——水在两个杯子之间来回流，一滴不洒。她背后有条小路通向远方的山，胸口有个发光的三角形。整个画面讲的就是「调和」——不是消灭矛盾，是让矛盾一起跳舞。",upright:"你正处于需要「调和」而非「选择」的阶段。结合你的问题来看，问题本身可能就出在非此即彼的二元思维上——对手头的资源进行重新组合比淘汰某一部分更有效。在学业上：与其突击复习或彻底放弃，不如每天固定投入45分钟——节奏比强度更持久。在感情上：不是「你对我错」的问题，而是你们能否像天使手中的两只杯子，彼此流动而不流失自己。在事业上：你的独特价值常常藏在「跨领域」的交叉点上——把两个看似不相关的技能组合起来，就是你的稀缺性。在自我成长上：修行不是苦行，平衡本身就是最高的修行。",reversed:"失衡正在消耗你——你可能在某件事上投入过多而让其他重要领域枯萎。如果你最近总是感到疲惫却不舍得停下来，可以试试逆向操作：今天刻意少做20%，看看天会不会塌下来。如果你在处理一段拉扯的关系：写下对方立场中你不得不承认有道理的那一两句话——不需要同意全部，只要找到那一点合理性，僵局就会松动。如果你总在「计划」却从未真正「分配精力」：把今天要做的事缩减到三件，完成就打住。节制逆位不是让你放弃，而是让你从「用力过猛」切换到「刚刚好」。",attributes:"数字14，1+4=5——5代表变化，但节制牌的变化是「在稳定中进化」而非「在动荡中革命」。对应射手座，火象中的探索者——但节制牌的火不是野火，而是酒精灯上那一簇精准的蓝焰，不喧哗却持续加热。元素虽主火，天使脚下的水和手中的液体引入了水元素的调和之力。在塔罗的跨牌叙事中，节制是死神牌之后的愈合期——你已完成了断舍离，现在需要把新元素编织进生活。这对你的问题意味着：答案不在「更多」里，而在「更精准」里——少即是多，慢即是快。"}},
+  {id:15,filename:"card_15.jpg",name:"恶魔",nameEn:"The Devil",tag:"大阿尔卡纳",meaning:"问问自己：是你在做事，还是欲望在牵着你走？看清楚什么绑住了你——然后你会发现，锁链其实没那么紧。",detail:{imagery:"一个黑漆漆的画面，中间有个长角的恶魔，一手举火把一手向下指。底下两个人被铁链拴着——但仔细看，链子是松的，完全可以自己取下来。他们没跑，因为习惯了。这张牌不是在吓你，是在说：你怕的东西，可能只是你「以为」自己挣不脱。",upright:"这张牌出现在你的问题中，说明你正被某种东西困住——可能不是铁链，而是一种你习惯了的声音，比如「我离不开这份工作」「没有这个人我怎么办」「大家都这样所以我也没办法」。结合你的问题来看，恶魔牌不是诅咒，它是一面诚实的、拒绝粉饰的镜子。在感情上：你留下来是因为爱，还是因为害怕重新面对孤独？两者可能并存，但你需要知道哪一边在替你做决定。在事业上：那份高薪但消耗你生命力的工作，你是不是在用「责任」这个词来美化恐惧？在自我成长上：那个你最想对自己承认却一直不敢承认的欲望或厌倦——现在就是看它一眼的时机，看一眼就有转机。",reversed:"解放开始了——但请注意，第一次挣脱铁链的姿势通常很笨拙、很难看，甚至伴随着短暂的恐慌。如果你终于决定离开某个消耗你的环境或关系：戒断反应是正常的，那些「回头」的冲动不是你真的想回去，而是你的神经系统在渴望熟悉的、即使有毒的安全感。如果你意识到某个成瘾行为（烟、酒、购物、讨好、无止境刷社交媒体）正在控制你：今天不必戒掉它，你只需要在它再次出现时对自己说一句「我看到你了」——让意识照进无意识的行为模式，这就是松链的第一步，也是决定性的那一步。",attributes:"数字15，1+5=6——6在数字学中代表和谐与责任，但恶魔牌呈现的是「被扭曲的和谐」——那种靠压抑真实自我换来的表面平静。对应摩羯座，土象的固执与野心，以及对物质成就和外部认可的过度认同。在荣格心理学中，这张牌完美对应阴影原型：你越是排斥和否认的东西，越会在暗处掌控你的每一个选择。在塔罗序列中，恶魔紧接节制——当你试图维持不真实的平衡时，阴影就会接管。这对你的问题意味着：真正困住你的不是外部环境，而是你把某种「假我」当成了真我太久——破幻比改变外部条件更彻底。"}},
+  {id:16,filename:"card_16.jpg",name:"高塔",nameEn:"The Tower",tag:"大阿尔卡纳",meaning:"塌了就塌了——有些东西本来就不牢靠。闪电打下来是帮你拆掉违章建筑。疼是真的，但清理也是真的。从废墟里站起来，这次盖个更好的。",detail:{imagery:"一座高塔被闪电击中，塔顶的王冠飞了，两个人从上面掉下来。背景黑得吓人，到处是火花和碎片。这张牌看着很惨，但它在说：那不是塌，是爆破——那些建立在骄傲和错觉上的结构，得被拆了才能重新打地基。",upright:"高塔是塔罗中最令人恐惧的牌，却也是最可能让你自由的一张——它摧毁的不是你，而是你误以为是自己的那座假建筑。结合你的问题来看，某个你一直在维护的结构（一段关系、一个职业身份、一个自我叙事）可能正在或即将发生动摇。这不可怕，因为这座塔的地基是你用「恐惧」「面子」「惯性」打的，闪电只是代你做了你迟迟不愿做的事。在感情上：一场无法回避的真相对话可能即将到来——它不会毁掉真正值得保留的东西，只会毁掉伪装。在事业上：一次被动的变动（离职、项目被砍、方向突变）可能是你在被宇宙重新分配到你真正该去的地方。不要抵抗坠落，坠落中有翅膀。",reversed:"你在用手撑着即将倒塌的墙——这是高塔逆位最经典的图景：明知某样东西该结束了，却在拼命修补。如果你一直在拖延一个分手的决定：试着算一笔账——维持这段关系的「每日内耗成本」是多少？把它写下来，用具体数字衡量抽象的消耗。如果你在一个错误的职业轨道上迟迟不转：你不必今天辞职，但你可以今天开始查一个你真正感兴趣的职位的任职要求——把「永远」的事拆成「今天」的一小步。高塔逆位告诉你：主动拆一个房间，好过整栋楼被夷为平地时你还在里面。",attributes:"数字16，1+6=7——7是神秘数字，代表灵性觉醒，而高塔牌的觉醒方式是通过「拆解」而非「积累」。元素属火，对应火星的爆发性力量——不是缓慢的燃烧，而是瞬间的引爆。在卡巴拉生命之树上，高塔连接Hod（理智）和Netzach（情感）——理智构建的防御系统被情感的真实洪流冲破，或反过来，情感构筑的泡沫被理智一针戳破。这对你的问题意味着：那个你最害怕失去的东西，很可能正是你获得真正自由的最大障碍——怕的不是失去，是失去后的空旷；但空旷正是重新建造的前提条件。"}},
+  {id:17,filename:"card_17.jpg",name:"星星",nameEn:"The Star",tag:"大阿尔卡纳",meaning:"别怕，暴风雨过去了。希望不是鸡汤，是你真的扛过来了。伤口在愈合，光正在回来——你已经在变好了。",detail:{imagery:"一个裸着的女生跪在池塘边，一手倒水一手倒水（对，两个瓶子都在倒），一只脚踩着水面。头顶是满天星星，最大那一颗亮得不像话。远处树上有只鸟在唱。整个画面安静到能听见水声——这是刚哭完之后的那种平静，不是没受伤，是伤完了。",upright:"高塔之后就是星星——这个顺序本身就是宇宙给你的保证：没有什么崩塌是不可修复的。结合你的问题来看，你可能刚刚经历了一段混乱或失望，现在正进入「重新相信」的阶段——相信并不幼稚，在最难的时候选择相信，是最成熟的事。在学业上：你之前的努力并没有白费，它们正在你看不见的层面重组，耐心等待质变。在感情上：治愈心碎并不需要强迫自己「走出来」，你只需要像星星牌的女子那样，每天给伤口浇一点水而不是挖开它。在事业上：创造力正在回归——给自己一段没有产出压力的空白时间，最好的灵感往往在你不再追它时悄然降临。",reversed:"希望的暂时缺席——你不是永远失去了星星，只是云层暂时遮住了视线。如果你最近觉得一切努力都不会有结果：请回头看一次——找出一件你曾经觉得「绝对过不去」但现在已经过去了的事。你有100%的生存率，这个数据值得信任。如果你觉得自己卡在某种「创意便秘」中：问题可能出在输入太多而输出太少——今天不消费任何内容（包括社交媒体），只创造一样东西，哪怕它烂到不值得被任何人看见。星星逆位也提醒你：也许你一直在向外找光，忘了你自己也是发光体。",attributes:"数字17，1+7=8——8是力量的数字（也是力量牌的编号），但星星牌的力量不同于力量牌的驯服，而是「疗愈之后重新站起」的柔韧之力。对应水瓶座，风象的远见与人道关怀——让你受苦的格局被拉开，你开始看到自己的痛苦在更大生命脉络中的位置。在塔罗叙事中，星星是死神（13）和高塔（16）两个大关卡之后的喘息与愈合——你不是在倒退，你是在恢复。这对你的问题意味着：你的问题需要一个「广角镜头」，从一年后的视角倒回来看今天，焦虑会因为视角的拉开而自然缩小。"}},
+  {id:18,filename:"card_18.jpg",name:"月亮",nameEn:"The Moon",tag:"大阿尔卡纳",meaning:"你现在看到的可能不是真的——不是不好的意思，是有些事情还没浮出水面。晚上别胡思乱想，天亮之后很多恐惧会自己变小。",detail:{imagery:"一张月亮的脸悬在天上，底下有两只狗在对着它叫。水里有只虾或蝎子正爬出来。远处两座塔之间有条小路——看不清尽头。整个画面有点诡异，但不是在吓人，是在说：有些东西表面看不清，得走过去，穿过迷雾，才能看见真相。",upright:"你正走在一条看不清全貌的路上——这不是要你恐慌的信号，而是要你信任直觉的时刻。结合你的问题来看，你可能正在过度分析、希望把所有变量都看清楚再行动，但月亮牌告诉你：有些答案在黑暗中才显影，就像月光下才能看见的荧光蘑菇。在感情上：你是否在把自己的恐惧投射到对方身上？把「我害怕他会……」和「他确实……」分开写，两栏对照。在事业上：当下的迷茫不是能力问题——月亮牌下的迷茫往往是创造力在暗处重组的前兆。在自我层面：多留意你的梦境，近期的梦比你醒着时的逻辑更有话要说——在床头放一支笔和本子，醒来第一件事不是看手机而是记录碎片。",reversed:"迷雾正在散去——但你可能会发现自己宁愿没有看清某些东西。月亮逆位是「真相浮现」的时刻，这未必舒服，却极其珍贵。如果你一直隐隐觉得某事不对却说不清哪里不对：静坐十分钟，问自己的身体「你想告诉我什么」——情绪储存在身体里先于储存在头脑里，肩颈的紧绷、胃部的紧缩、突然的疲倦，都是身体的语法。如果你发现了一段关系中一直存在的欺骗或自欺：痛苦是真的，但从此你获得了一个不会再踩进去的边界。月亮逆位的核心赠予是：不再需要猜了。",attributes:"数字18，1+8=9——9是隐士牌的数字，也代表智慧与完成，但月亮的完成是「穿过潜意识的沼泽」的完成而非阳光下的凯旋。对应双鱼座，水象的边界消融——你与他人的感受、过去与现在、梦与醒之间的界限变得模糊，这并非病态，而是敏感度提升。在荣格派看来，月亮牌是「个人无意识与集体无意识」的接口——这张牌出现时，梦里的人往往带着重要的隐喻信息。这对你的问题意味着：答案不在更多理性分析里，答案藏在你的直觉涌出的第一个反应、你身体的第一感觉、和你梦中的奇怪比喻里。"}},
+  {id:19,filename:"card_19.jpg",name:"太阳",nameEn:"The Sun",tag:"大阿尔卡纳",meaning:"阳光灿烂，万事明朗。你正在发光，别不好意思承认——这段时间你做什么都顺，享受就好了。",detail:{imagery:"一个大太阳挂在天上，光芒万丈。底下有个光屁股的小孩骑在白马上，笑得像没有烦恼过。背后是一排向日葵，每一朵都冲着太阳。整个画面温暖到想哭——这是那种「一切都对了」的感觉，你什么都不用做，光是存在就足够好。",upright:"这就是你的「光照时刻」——不是未来才来的奖励，而是现在正在发生的激活。结合你的问题来看，你之前的努力正在被看见、被认可、被回响。在学业上：考试、答辩、作业的结果倾向于对你的有利方向——你为此准备过，现在是时候接住成果，而不是谦虚地躲开。在感情上：这是一个可以卸下铠甲去爱的时刻——真诚比技巧更有穿透力，你的「缺点」在真正的亲密里不是瑕疵，是让人靠近的门。在事业上：你的能见度正在变高——请你在被看到的时候提出你真正想要的，而不是退而求其次。太阳牌的核心信息是：你不必变得更好才配得上美好的结果，你就是配得上。",reversed:"太阳并没有消失——它只是暂时被云遮住了，而云总是会移动的。如果你正在经历一段「明明一切都还行却就是不开心」的时期：请检查你衡量自己生活的标尺是谁给的——你很可能在用别人的高光时刻截屏来对比自己的日常幕后。太阳逆位常常出现在「成功抑郁症」中——你终于拿到了当初想要的东西却发现空虚，这不是你错了，是你很久没有问过自己「我真正想要的是什么」了。如果你觉得快乐变得很费力：找出你十岁时最擅长的那件事——画画、唱歌、爬树、讲故事——今天把它再做一次，不为了成品，不为了发朋友圈，只为了那个不需要理由就能快乐的自己。",attributes:"数字19，1+9=10——10是轮子即命运之轮的数字，又在1+0=1中回到起始——太阳牌是一种「完成后的重启」：你学会了所有功课，所以现在可以尽情天真。元素属火，但太阳的火不同于高塔的毁灭之火或节制牌的调控之火——太阳的火是生命本身的火，你身体里的体温、光合作用、维生素D的合成，都是物理层面的太阳参与。在占星学中对应太阳星体——你的核心身份、你的创造力、你的生命意志。这对你的问题意味着：答案可能比你想象的更接近「是」，阻挡你的是你自己在门口搭的「我不够好」的玄关。"}},
+  {id:20,filename:"card_20.jpg",name:"审判",nameEn:"Judgement",tag:"大阿尔卡纳",meaning:"该算账了——不是别人找你算，是你心里那杆秤在叫你面对。过去的事该翻篇了，翻开不是翻出来继续疼，是翻过去重新活。",detail:{imagery:"一个天使在天上吹号角，底下棺材里的人都坐起来了——灰色的人站起来之后变成了彩色。远处是雪山和海洋。这不是审判日的恐怖画面，是「听到内心召唤后终于决定醒过来」的那一刻。清算过去，是为了腾出手接新的。",upright:"你被什么召唤着——不是闹钟的催促，而是一种来自深处的、让你无法继续假装听不见的声音。结合你的问题来看，某个重要的「觉醒时刻」正在或即将到来。在学业上：有一门知识或技能你一直在回避，但你知道它才是真正能让你上升的阶梯——回避期已经到期了。在感情上：是时候审视这段关系是否在「叫醒你」还是在「催眠你」——真正值得的关系不会要求你沉睡。在事业上：那个一直在背景里低语的想法——也许是转行、也许是创业、也许是公开表达——音量正在被调大。审判牌不说「你够好了吗」，它说「你准备好了，现在是回应的时候」。",reversed:"你在按掉自己生命的闹钟——这不是懒惰，这往往是恐惧穿上了拖延的外衣。如果你一直在回避一个重要的自我反思：想象明年的今天你还在原地——保持现在的状态、现在的犹豫、现在的消耗——把那个画面写下来，越具体越好。恐惧未来是模糊的才可怕，把它具体化之后你会发现自己有应对方案。如果过去的某件事让你无法原谅自己：写一封不寄出的原谅信——不为自己辩护、不淡化错误、但也不把错误等同于全部的你。审判逆位的核心作业不是向外找答案，而是向内停止逃逸。",attributes:"数字20，2+0=2——2是女祭司的数字，代表二元对立与内在智慧之间的张力。20也是十进制中一个完整的轮回，审判牌是「上一个轮回的结案陈词和下一个轮回的开幕词」。元素属火，对应冥王星——地下之火，不是照亮而是锻造，把你所逃避的一切加热到无处可逃的温度，让你不得不面对。在希伯来字母对应中，审判牌对应「Shin」（ש），象征圣灵与神性的火花——你内在有比你想象中更大、更古老的东西在运作。这对你的问题意味着：答案不是你需要去「找到」的，而是你需要「静下来听」的——它已经在你里面了。"}},
+  {id:21,filename:"card_21.jpg",name:"世界",nameEn:"The World",tag:"大阿尔卡纳",meaning:"你做到了。这一段旅程画上了句号。转个身庆祝一下——下一个循环的大门已经开了，但先为现在的自己鼓个掌。",detail:{imagery:"一个女生悬浮在椭圆形的花环中间，一手拿两把权杖，周围四角各有一个活物——天使、老鹰、牛、狮子。花环是完整的一个圈，没有缺口。这是「圆满」的画面：不是完美无瑕的意思，是「这段路走完了，我终于完整了」的感觉。",upright:"你来到了一个圆满的节点——不是人生所有事的终点，而是一个重要的章节正在优雅地合上最后一页。结合你的问题来看，你曾经为之焦虑的某件事已经或正在接近完成，现在的任务不是冲刺，而是停下来，完整地、真诚地承认自己走了多远。在学业上：一个学习阶段即将收尾——毕业、考试、或某个技能的真正内化，这不仅是任务完成，是你的身份在更新。在感情上：一段关系可能进入「更深承诺」或「和平完结」的成熟阶段——无论哪一种，它让你更完整而非更破碎。在事业上：你在一个项目或职业阶段中已经积累了足够的资本和自知——下一座山在等你，但请先在这座山顶看一次风景。",reversed:"你离完成只差最后一步——而这一步往往是心理上的，不是能力上的。如果你总是觉得「还差一点」「还需要再改改」：世界逆位在告诉你，你害怕的不是失败，而是成功之后那种「然后呢」的空茫——你不必知道然后呢的全部答案，先接住眼前的完成。如果你在逃避一个必要的结束——一段关系的落幕、一份工作的辞别、一个旧身份的褪去：今天写一段属于你的「第21章结尾」，用过去时态写，写下之后你会发现，主动写下的结局比被动承受的结局轻很多。世界逆位不是在说你还不够好，是在说你已经好了，只是还不习惯承认。",attributes:"数字21，2+1=3——3是创造的数字（女皇），也是三位一体的神圣结构：正、反、合。你经过了愚者的天真（0）到世界的融贯（21），中间打完了所有关卡，现在你站在一个能重新理解一切的高度。元素属土，对应土星——土星不是惩罚之星，是大师之星，它用时间和自律把天赋打磨成真功夫。在塔罗的完整叙事中，世界是最后一张大牌，但它紧接着指向愚者的下一轮循环——完成不是终点，是新一轮开始的许可证。这对你的问题意味着：你已经走到了比你以为的更远的地方，答案不是需要更多线索，而是需要你认可你已经到达的位置。"}},
+  // 权杖 22-35
+  {id:22,filename:"card_22.jpg",name:"权杖1",nameEn:"Ace of Wands",tag:"权杖",meaning:"灵感来了！一个全新的火花正在冒——抓住它，这可能是一段冒险的起点。别想太多，先开始。",detail:{imagery:"一只手从云里伸出来，握着一根冒新芽的权杖。权杖上长着几片小叶子，底部闪闪发光。整个画面就一个意思：新的火花已经递到你面前了，接不接在你。",upright:"一张最纯粹的「开始」牌，宇宙在给你按下了启动键。结合你的问题来看，你不是缺能力或资源——你缺的只是承认自己「想」的那一下。如果事关事业/学业：那个在心里盘旋太久的创意、项目或方向，现在就是按下第一次行动的时刻。如果涉及感情：别用「时机未到」来包装犹豫，真实的情感冲动本身就是最好的导航。如果是自我成长类问题：你感受到的那股莫名躁动不是焦虑，是创造欲在敲门——请开门。",reversed:"灵感来了又走，或者你手里握着火种却迟迟不肯点燃——可能是对失败的恐惧，也可能是同时被太多方向拉扯。这不是能量消失了，而是被压抑了。如果你一直在等「更好的时机」：可以把你认为需要的条件写在纸上，然后问自己「这些条件里哪一条是无法被创造出来的？」通常你会发现一条都没有。如果你同时想做很多事却一件都没启动：选最让你兴奋的那个，哪怕它看起来最不「实际」。",attributes:"数字1，原初之火——不是习惯、不是延续，是全新的起点，如同宇宙大爆炸的那个奇点。元素属火，对应灵魂的热情、创造力与意志力——火不问你准备好了没有，它只管燃烧。星象关联白羊座、狮子座与射手座，三大火象星座的共同语言是「我要」。这对你的问题意味着：你不需要先把答案想清楚再行动，你需要在行动中让答案显形。"}},
+  {id:23,filename:"card_23.jpg",name:"权杖2",nameEn:"Two of Wands",tag:"权杖",meaning:"你正站在一个选择的节点上，左手握着已有的，右手看着外面的世界。别急，规划好了再迈步。",detail:{imagery:"一个人站在城堡的塔楼上，一手握着一根权杖，另一手扶着栏杆往远处看。他身后有个地球仪和另一根权杖立着。他在掂量——是守着现有的，还是往外走一步？",upright:"你正处于一个关键的决策窗口——不是要不要做，而是「以什么方式做」和「往哪个方向去」。结合你的问题来看：你现在拥有比你以为的更多的主动权。如果事关职业规划：那张你看似随意的跳槽念头或创业方向，其实已经积累了大量隐性判断，现在需要显性化。如果涉及感情：一段关系是否值得更深入的承诺，答案不是「等对方表态」，而是你内心的指针已经偏向了某一侧。如果是学业：你选择的专业或方向，不妨用「未来三年后的自己会怎么想」来校准。",reversed:"你可能在两种选择之间反复横跳——或者更糟，假装自己还没有做选择，从而避免了真正出发。这种卡顿不是因为信息不够，而是因为你在怕「选错」。如果你发现自己一直在收集信息却不行动：可以设一个「决策deadline」，在截止日前允许自己尽情纠结，到了那天就掷骰子——你会发现骰子落地的瞬间，你心里其实已经有了答案。如果你在害怕离开舒适区：想想你过去最大的一次成长，是不是都伴随着一次「不太舒服的决定」。",attributes:"数字2——二元性的表达，是「此」与「彼」之间的张力场。元素属火配数字2，火在这里不再是爆发，而是定向的燃烧——有了目标才能把热量集中。星象关联火星在白羊座，代表自我主张与开拓欲。这对你的问题意味着：你需要的不是更多信息，而是一个勇敢的决定——哪怕这个决定就是「暂时不做决定」。"}},
+  {id:24,filename:"card_24.jpg",name:"权杖3",nameEn:"Three of Wands",tag:"权杖",meaning:"你之前的计划正在展开，视野在变宽。往前看，海的那边有东西在等你——你的格局正在变大。",detail:{imagery:"一个人背对着我们站在海边的高处，看着远方海面上有几艘船。他手里握着权杖，身边还有两根立着。这不是出发的画面，是「出发之后回头看，发现自己已经走了很远」的那一刻。",upright:"你的前期投入正在被看见——不是「快要成功」的那种戏剧性，而是一种踏实的推进感。结合你的问题来看：你已经过了播种期，现在进入的是「等待收成但不要闲着」的阶段。如果事关事业：你发出去的简历、启动的项目、建立的人脉，此刻可能正在某个你看不见的角落发酵。如果是感情：一段关系的潜力比你看到的要大——给它一点时间和空间去自然发展，不要急着定义。如果是学业：坚持的方向是对的，但可以考虑向外拓展——比如跨校选课、海外交流、跨领域阅读。",reversed:"计划遇到了延迟，或者你预期的回报迟迟没有到来——这让你开始怀疑当初的投资是不是错了。但逆位的权杖3往往不意味着「错了」，而是「还没到」。如果你的努力暂时见不到结果：可以把注意力从「最终目标」转移到「过程性小胜利」上，每达成一个微小里程碑就给自己一个小奖励。如果你在考虑放弃：可以先把目前投入的所有东西列出来，问自己「这些投入里有没有任何一个是在浪费的？」——你会发现几乎没有。",attributes:"数字3在生命之树上对应「理解」的源质，是二元对立之后的第一个综合——超越了非此即彼。元素火在此处与数字3结合，代表创造力的「成型」阶段——火花已经变成了稳定的火焰。星象关联太阳在白羊座（擢升），代表自信的行动与正向的扩张。这对你的问题意味着：答案正在来的路上，你需要的不是掉头，而是保持航向并微调。"}},
+  {id:25,filename:"card_25.jpg",name:"权杖4",nameEn:"Four of Wands",tag:"权杖",meaning:"该庆祝了。你努力的事有了着落，和身边人一起开心一下。找个地方安顿下来，心稳了，日子就好过。",detail:{imagery:"四根权杖搭成一个花门，顶上挂满了果实和花环。两个人举着花在门下载歌载舞，后面是一座城堡。这就是最接地气的幸福——活干了、果收了、大家一起笑。",upright:"一个阶段性的里程碑即将或已经达成，你值得停下来庆祝——不是等到「大事成了」才庆祝，而是为路上的每一步都举杯。结合你的问题来看：你近期可能在某个领域迎来了稳定与安全的信号。如果事关家庭/住所：搬家、装修、家庭关系的回暖都被这张牌祝福。如果是事业：你可能即将签下重要的合约或完成一个阶段性项目——不要急着冲下一个目标，先享受此刻。如果是感情：一段关系的安全感正在建立，这不是平淡而是成熟。",reversed:"你可能会感到某种「不入群」的疏离感——别人在庆祝的事情你无法共鸣，或者你期待的一场幸福迟迟没有到来。有时候逆位权杖4也指向家庭内部的不稳定，比如搬家的计划受阻、与家人的摩擦等。如果你在这个阶段感到漂泊：可以从最微小的仪式感开始重建归属——比如用心做一顿晚餐、整理一张照片墙。如果你在等待一个承诺：可以先问自己，那个承诺如果现在就被兑现，你真正得到的是什么？那东西你现在有没有其他方式可以先给自己？",attributes:"数字4——四元素、四方向、四季轮回，是物质世界稳定性的原型数字。四根权杖恰好围成一个完整的框架。火元素在此处与数字4结合，看似矛盾——火渴望自由而4渴望结构——但这恰恰说明：真正的自由不是没有边界，而是在安全边界内的尽情绽放。星象关联金星在白羊座，代表在行动中感受到的爱与美感。这对你的问题意味着：稳定不是激情的反面，它是激情的底座。"}},
+  {id:26,filename:"card_26.jpg",name:"权杖5",nameEn:"Five of Wands",tag:"权杖",meaning:"周围有点吵，意见碰来碰去。冲突不一定坏——有时候撞一撞才能撞出新的火花。别躲，但别恋战。",detail:{imagery:"五个人各拿着一根权杖，互相戳来戳去——但仔细看，这不是真打，更像是比划和较劲。每个人的角度都不一样，场面有点乱，但也有一种别样的活力。",upright:"你可能正身处一个竞争激烈的环境里——办公室、考场、甚至朋友圈——而你需要让自己的声音被听见。这把牌不是劝你避开冲突，而是告诉你：适当的碰撞是有益的。结合你的问题来看：如果涉及工作，可能出现了多个观点相互博弈的局面，你的立场需要被清晰且尊重地表达出来。如果是学业：良性竞争能激发你更强的表现力，把对手当成你的加速器而非绊脚石。如果是人际关系中的摩擦：不要把分歧上升到个人层面——你们只是对事不对人。",reversed:"要么你陷入了永无止境的内耗——脑子里各种声音在打架，没有一方胜出；要么你在逃避必要的冲突——为了避免不愉快而把真实的自己收了起来。这两种情况都让你很累。如果你发现自己总是在纠结：可以把脑海中的不同声音想象成几个角色，给他们各自一张纸把观点写完，然后你以「主席」的身份进行表决。如果你在关系里一直忍气吞声：试着用一个温和但坚定的句式——「我理解你的想法，但我的感受是……」——第一次说的时候可能会紧张，但说出来之后你会发现自己比自己想象的更有力量。",attributes:"数字5位于生命之树上对应「严厉」的源质，它带来挑战、考验与必要的紧张——5是所有稳固结构被打破之后进入的动荡期。元素火在5的维度中表现为五股方向的火焰互相撕扯——这是意志力与意志力的正面交锋。星象关联土星在狮子座，严肃的约束力作用于张扬的创造力。这对你的问题意味着：你正在经历的矛盾不是坏事——它逼着你走出模糊地带，找到一个更清晰的立场。"}},
+  {id:27,filename:"card_27.jpg",name:"权杖6",nameEn:"Six of Wands",tag:"权杖",meaning:"你赢了，大家都看见了。别不好意思接受赞美——这荣誉是你应得的。昂首挺胸走过人群吧。",detail:{imagery:"一个人骑着白马，戴着桂冠，手里举着权杖。周围有好几个人簇拥着他，有人在喝彩、有人在跟随。这画面就是「凯旋归来」——不是偷偷摸摸的胜利，是大大方方被看见。",upright:"你的努力正在被看见——或者说即将被看见。这是一张「被认可的牌」，不只是外在的荣誉如升职、获奖、考试成功，更是一种内心的坦然：「我做了我该做的，结果自然会来。」结合你的问题来看：如果你一直觉得自己不公平地处于阴影里，这张牌告诉你聚光灯正在移向你。如果涉及事业：你近期的某个成果可能引起关键人物的注意，准备好被问到「你是怎么做到的」——提前把经验提炼成几句话。如果是感情：一个人对你的欣赏可能比你感知到的要多得多。",reversed:"你可能在追求认可的过程中走偏了——把别人的掌声当成了自己的锚，而没有掌声的时候，自信就跟着摇晃。逆位的权杖6也可能指向一种「塌房」式的跌落：之前被高估的某件事正在回归它真实的位置。如果你最近太过依赖外界的反馈：可以花点时间列出你「即便没人知道也会坚持去做」的三件事——那才是你真正的内在引擎。如果你受到了批评或冷落：把批评者和他们的动机分开——有人给的是镜子，有人给的只是自己的投射。",attributes:"数字6在生命之树上对应「美」的源质，是和谐、平衡与荣光——6处于金星的领域，代表被爱与价值感的回流。火元素的扩张力与数字6的协调力碰撞出「被世界接纳的创造力」。星象关联木星在狮子座，木星的扩张加持狮子的自信——这几乎是星盘中最闪耀的组合之一。这对你的问题意味着：你的价值不需要被所有人看见才成立，但被看见的时候也请大方接受。"}},
+  {id:28,filename:"card_28.jpg",name:"权杖7",nameEn:"Seven of Wands",tag:"权杖",meaning:"有人在挑战你，别退。你辛辛苦苦打下的地盘，值得你站在上面。累是真的累，但你能撑。",detail:{imagery:"一个人站在高地上，双手握着一根权杖，面对着底下六根从不同方向伸上来的权杖。他踩的位置不高，但足够陡——表情不是轻松，是「我不会让你上来」的坚定。",upright:"你可能正在经历一种「被围攻」的压力——不是真正意义上的敌人，而是一堆同时涌来的反对意见、质疑或竞争压力。结合你的问题来看：你感觉自己需要一直输出、一直据理力争，很累，但你没有倒下。这本身就是一个极其重要的信号：你在乎。如果涉及职场：你的一个观点或方案正在遭遇多方挑战，这不代表它是错的，反而说明它有足够的分量引发讨论。如果是个人生活：你可能在坚持一个不太被理解的信念或选择——坚持下去的动力不是别人的认同，是你自己内心的确认。",reversed:"你可能已经被持续的压力压得喘不过气来，开始怀疑「值得吗」——或者你在用过度防御的方式应对世界，把善意的建议也误读为攻击。如果你感到四面楚歌：可以先做一个「压力溯源」——把每一个让你感到被挑战的来源列出来，然后标记哪些是真实的威胁、哪些是你想象出来的。如果你发现自己对谁都炸毛：这很可能是长期透支的信号——不是别人真的在针对你，而是你的心理带宽已经见底了。给自己放一小时的「零社交」假期——关掉所有通知，只是待着。",attributes:"数字7在灵数学中代表灵性试炼与深度省思——7是那种逼你往内看的数字。权杖7中的火不再向外燃烧，而是被逼成了一道防火墙。这张牌的星象关联是火星在狮子座——火星的战斗欲被狮子座的价值感校准，所以这不是盲打，是为了捍卫自己认同的东西。这对你的问题意味着：你现在面对的阻力不是路错了的证明——恰恰相反，有价值的东西一定会遇到阻力。"}},
+  {id:29,filename:"card_29.jpg",name:"权杖8",nameEn:"Eight of Wands",tag:"权杖",meaning:"事情在加速，消息在路上。别拦着——让子弹飞一会儿。这段时间做什么都快，顺势就好。",detail:{imagery:"八根权杖从画面的右上角齐齐飞向左下角，像箭一样划过天空。背景是开阔的田野和蓝天。整个画面有一种「终于等到了」的释放感——卡了很久的事情突然开始动了。",upright:"事情正在高速推进——一段漫长的等待结束了，现在进入了「挡都挡不住」的加速度期，保持专注不要分神就好。结合你的问题来看：如果你之前觉得一切都很慢很卡，现在轮子忽然全速转起来了，你可能会被这种速度吓到，但别怕——这是你之前所有努力的势能释放。如果事关沟通：信息传递会非常顺畅——该发的消息、该打的电话、该约的面谈，现在去做的效果是平时的三倍。如果是旅行/搬迁相关：行程可能在短时间内迅速敲定。准备好，接住。",reversed:"箭在弦上——但弦断了。你可能正经历一种「万事俱备只欠东风」的焦灼感：明明一切都该动了，却偏偏卡在一个环节上。这种延迟往往有它的意义——但不是让你停下来什么都不干。如果你遇到了流程上的阻滞：可以把被卡住的那个点单独拆出来，问自己「这个环节有没有变通方案」——通常答案是有的。如果你的表达欲被压抑了：可以先通过私人的方式输出——写日记、录语音备忘录、和一个信任的朋友先说出来，让能量先有出口。",attributes:"数字8在灵数学中是力量的数字——不是蛮力，而是像原子核内部那样被精密组织的力量。八根权杖飞行的整齐也暗示着这种秩序感。元素火在数字8中达到了一种罕见的「高速而不失控」的状态，如同战斗机突破音障的那一刻。星象关联水星在射手座，水星掌管信息与传输，射手座带来远方与信念——信息的传递跨越山海。这对你的问题意味着：答案可能以你意想不到的速度抵达，请保持手机开机、耳朵打开。"}},
+  {id:30,filename:"card_30.jpg",name:"权杖9",nameEn:"Nine of Wands",tag:"权杖",meaning:"你受过伤了，但你还没倒。再撑一下——最后一道防线守住了就是守住了。累了就靠在权杖上歇歇，但别放下。",detail:{imagery:"一个人双手扶着一根权杖站着，头上和身上缠着绷带，表情疲惫但警觉。背后立着另外八根权杖，像一排栅栏——他守着自己打下来的地盘。虽然挂了彩，但他没有后退一步。",upright:"你可能已经很累了——不是「刚忙完一个项目」的那种累，而是一种长时间处于高警觉状态的消耗。但你还站在这里，这就是全部。结合你的问题来看：你经历的事情已经给了你别人没有的深度——那些伤疤是勋章。如果事关坚持/放弃：你现在离目标可能比你认为的近得多，再撑一段，但撑的方式可以聪明一些——不是硬扛，是找到一个能让你借力的姿势。如果是个人成长：你可能正在学会设立边界的路上——这过程不舒服，因为每一个「不」都带着愧疚感，但这是必要的。",reversed:"你可能已经撑到了极限——身体在发警报而你假装没听见——或者你设的边界太硬了，变成了把自己关起来的墙。如果你正在透支自己：今天不要对自己说「再坚持一下」——今天要说「先休息一下」，因为你明天需要战斗的状态不是疲惫的。如果你对周围人竖起了一道过于坚硬的墙：可以试着让一个你信任的人靠近一点点——不是要你全部打开，只是开一个小窗——你会发现有人是真的想要帮你，而不是来攻击你的。",attributes:"数字9是单数序列的最后一个数字，是完成之前最后的考验——如同登山者在登顶前最后一百米的缺氧感。火元素走到数字9已经不再是张扬的烈焰，而是烧到深处之后的不灭炭火——看起来没那么炫目，但持久且稳定。星象关联月亮在射手座，保护直觉与内在安全感被置于探索之上。这对你的问题意味着：你不是变脆弱了，你是在学会更聪明地保护自己——这是成熟。"}},
+  {id:31,filename:"card_31.jpg",name:"权杖10",nameEn:"Ten of Wands",tag:"权杖",meaning:"你扛太多了。十根权杖抱在怀里，腰都快压弯了。学会分出去一些，或者直接扔掉几根——不是所有担子都是你该背的。",detail:{imagery:"一个人弯着腰，怀里抱着十根权杖往前走——太多了，多到看不清前面的路。他低着头，脚步沉重。这就是「超额负荷」的经典画面：努力是好事，但背太多走不远。",upright:"你背负得太多了——不是矫情，是事实。你可能把太多不属于你的责任揽到了自己身上，但这张牌要告诉你的是：你不是必须一个人扛完所有。结合你的问题来看：如果涉及工作/学业：你手上的事务已经堆到了影响效率的程度，现在不是更努力的时候，是更聪明地分配和删减的时候。如果是家庭/感情：你可能一直在为别人兜底——但兜底的尽头不是被感激，而是被习惯。你需要重新谈判责任分配。",reversed:"你终于意识到了自己扛不了全部——这本身就是巨大的进步。但放下不是一个动作，而是一个过程。逆位的权杖10也提醒：不要在崩溃之后才放手——主动放下比被动崩溃体面得多。如果你不知道从哪里开始卸：可以把你所有觉得「必须做」的事写下来，然后做这道填空——「如果我不做____，最坏的结果是____。」你填完会发现，很多「必须」其实是「我以为必须」。如果你觉得对不起别人：记住一句话——你把自己累垮了，才是对所有人最大的对不起。",attributes:"数字10在灵数学中是一个周期的终结与下一周期的伏笔——1到10完成了，再往前就是新一轮的1。权杖10是这个循环的收尾之作，火元素走到尽头，不再是光与热，而是沉重的炭灰——但这堆炭灰下面还有余温，足以点燃下一个循环。星象关联土星在射手座，信念被现实的枷锁压制，需要一次结构性重组。这对你的问题意味着：你需要的不是更多的力气，而是一次诚实的「哪些可以放」的盘点。"}},
+  {id:32,filename:"card_32.jpg",name:"权杖侍从",nameEn:"Page of Wands",tag:"权杖",meaning:"一个小惊喜或者新想法正在靠近。像小孩拿着一张新画的图跑过来给你看——别敷衍，蹲下来认真看。",detail:{imagery:"一个穿着鲜亮衣服的年轻人站在沙漠里，双手举着一根权杖正在端详，表情充满了好奇。背景是开阔的天地，远处有几座金字塔。这就是那种「捡到一颗好看的石头兴奋半天」的心情。",upright:"你的内心正涌起一股对某件事的新热情——可能是一门新手艺、一个新爱好、一段新关系，或者仅仅是「想要改变一下」的冲动。结合你的问题来看：不要因为自己是「新手」就退缩——此刻的赤子之心是你最大的优势。如果涉及学业/技能：大胆地去接触那个你好奇了很久的领域，哪怕从零开始也没关系——Page牌本身就是新手运。如果是感情：这段关系如果刚开始，请享受那种「什么都不确定但什么都可能」的阶段——成熟之后的感情求之不得这种轻盈感。如果是灵性成长：跟随你的兴趣跳跃，不一定要成体系——万物皆师。",reversed:"你的热情太分散了——什么都想试试但什么都只碰了个皮毛，或者你在害怕真正投入，因为投入意味着可能失败。逆位的权杖侍从也可能指向坏消息或计划的延迟。如果你发现自己一直在「准备开始」：可以选定一个方向，承诺只做21天，21天之后可以换——但21天之内不许换。这给你一个安全退出的心理台阶，同时逼你往前跨。如果你因为害怕失败而举棋不定：权杖侍从最大的天赋就是他允许自己做得「不好」——你也可以。",attributes:"侍从在宫廷牌中对应大地之子——是元素中最原始、最可塑的形态。权杖侍从是「火中之土」：火的热忱被土的耐心所承载，所以他能从热情中生发出真正的学习和成长。他没有国王的权威和王后的成熟，但他有他们最怀念的东西：第一次触碰火焰时的心跳。星象关联火象星座的初期度数——特别是白羊座的初度，纯然的冲动与好奇心。这对你的问题意味着：你不需要等自己「准备好」——你只需要等自己「忍不住想试试」。"}},
+  {id:33,filename:"card_33.jpg",name:"权杖骑士",nameEn:"Knight of Wands",tag:"权杖",meaning:"冲！但不是瞎冲——你的热情是好事，但路上有个坑你得看清楚。带着火往前，但眼睛睁着。",detail:{imagery:"一个披着火焰披风的骑士骑在马上，高举权杖，马的后蹄已经抬起来要冲出去了。整个画面充满了速度感和冲动——沙漠在他身后拉成一条线。这就是「好，我不等了」的那个瞬间。",upright:"你正在进入一个高能量、高速度的阶段——不是冷静规划的时候，而是冲出去、干了再说的时候。结合你的问题来看：如果你一直在犹豫要不要迈出那一步，权杖骑士给了你一张「冲动许可证」——注意不是鲁莽，而是被热情驱动的大胆行动。如果涉及事业：现在是抢时间窗口的关键期，不要被细节困住，先跑起来再调整姿势。如果是感情：如果你对某人有强烈的好感，权杖骑士鼓励你直接表达——就算被拒绝，你也会因为自己勇敢过了而更钦佩自己。如果是旅行/搬家：很可能在近期说走就走。",reversed:"你可能冲得太快了——在激情之下忽略了重要细节，或者在错误的方向上消耗了大量能量。逆位的权杖骑士也指向一种能量过山车——时而亢奋时而瘫倒，缺乏持续稳定的输出。如果你发现自己总是在启动新项目但从不收尾：先让你手头最近的那件事达到一个「可交付」的节点——哪怕只是一个粗糙的版本。如果你因为冲动而捅了篓子：骑士教你的不是从此不再冲，而是冲之前多问自己一句话——「我冲完之后谁来收拾？」如果那个人是你自己，那就值得；如果那个人是别人，那就该刹一脚。",attributes:"骑士在宫廷牌中对应「火中之火」——权杖之火加上骑士之火，这是双倍的燃烧力，意味着没有任何东西能让这个骑士慢下来。他是黄道带中的射手座原型——那个骑着马朝天射箭的半人马，永远在追求下一个地平线。在元素层级中，骑士是火的「行动」阶段——不是想法不是情感不是成果，就是纯粹的运动。这对你的问题意味着：如果你身体里有一股坐不住的劲——那不是焦虑，那是你的内在骑士在跟你说「别想了，走」。"}},
+  {id:34,filename:"card_34.jpg",name:"权杖王后",nameEn:"Queen of Wands",tag:"权杖",meaning:"你身上有种让人想靠近的温暖。不是那种硬要当领导的气场，而是大家自然而然愿意听你说话。保持这个温度。",detail:{imagery:"一个穿金色长袍的女性坐在王座上，一手握着权杖，一手搭在扶手上。她面前站着一只小黑猫，她看它的眼神不像看宠物，像看朋友。背后是向日葵和狮子雕刻——温暖、自信，不扎人。",upright:"你正在进入一个「收放自如」的状态——热情还在，但不再被热情牵着走，而是懂得如何引导热情转化为真正的成果。结合你的问题来看：这张牌鼓励你发挥自己的魅力和感染力，而不是靠蛮干。如果涉及职场：你的领导力不在于发号施令，而在于让团队里每个人都觉得自己被看见。如果是感情：你不必追，不必演，自然的状态本身就是最强的吸引力——王后教你的是「稳住了，自有花香」。如果是创造力：你拥有将灵感变成现实的稀缺能力，请相信自己的节奏——快不起来的时候就慢，那也是一种力量。",reversed:"你可能在透支自己的能量——一直输出温暖但没有为自己补充——导致内在的火源在枯竭。逆位的权杖王后也可能指向自我怀疑：你明明有能力，却在关键时刻觉得自己不行。如果你觉得自己被掏空了：今天请把「照顾别人」的开关暂时关掉，别人可以等，但你的核心火焰不能熄灭——先回来给自己充电。如果你在怀疑自己不够好：权杖王后之所以迷人，不是因为她完美，而是因为她完全接受了自己的不完美之后散发出来的那种坦然——你可以从练习对自己说「没关系」开始。",attributes:"王后在宫廷牌中对应「水中之火」——水的情感深度与火的热情结合，造就了一种既温暖又深刻的能量。她是黄道带里的狮子座原型——有王者风范却不专横，自信却不傲慢。王后牌的核心是「成熟的创造力」：不是动不动就炸的烟花，而是可以持续供能的核反应堆。星象关联狮子座与射手座的交界，兼具狮子的自我确信与射手的豁达。这对你的问题意味着：你不必用力去证明自己——你的存在本身就是一种能量。"}},
+  {id:35,filename:"card_35.jpg",name:"权杖国王",nameEn:"King of Wands",tag:"权杖",meaning:"你看到的不只是眼前这一摊——你能看到三年后、五年后。用这个远见做决策，别被当下的小波动牵着走。",detail:{imagery:"一个稳重的男人坐在王座上，手握权杖，眼神越过画面看向远方。他脚边趴着一只小蜥蜴——象征火元素，也是敏锐的观察者。这不是年轻人的冲劲，是经验沉淀之后的笃定。",upright:"你需要以更成熟的姿态站出来——不是争取权力，而是承担你本来就有的影响力。结合你的问题来看：当下需要的是战略性的思考而非战术性的应激。如果涉及事业：你可能被推到一个需要拍板的位置上——不要怀疑自己，你的经验厚度已经足以支撑这个角色。如果是创业/项目：国王的权杖代表的不是一蹴而就的灵感，而是可以持续燃烧的系统——你该着眼于建立机制而非靠一个人撑。如果是个人成长：你正在从「被世界塑造」过渡到「主动塑造世界」的阶段——这既是权利也是责任。",reversed:"你可能在用「强势」伪装内心的不安全感——越是吼得大声，越是内心没底。或者你在滥用手中的影响力，把主导变成了控制。如果你发现自己对别人越来越缺乏耐心：可以把最近一次你对人发火的情境复盘一下——问自己「我真正在生气的到底是这个人，还是别的什么？」通常答案会指向一个你自己未处理的恐惧。如果你因为害怕失去控制而什么都自己来：权杖国王之所以是国王，不是因为他什么都会，而是因为他懂得启用对的骑士、王后和侍从——你身边不是没有可用之人。",attributes:"国王在宫廷牌中对应「火中之风」——火的扩张力被风带到更高的维度，形成了真正的远见与统御力。他是黄道带中的狮子座+射手座的成熟体——已经不再需要证明自己的火焰有多高，他只需要保证火焰不会灭，且能点亮后人。国王代表火元素的终极形态：不是燃烧自己照亮别人，而是成为一个能量系统——别人靠近你就自然被点燃。这对你的问题意味着：你需要的不再是技巧层面的建议，而是一种更宽广的生命视角——像一个国王那样看问题。"}},
+  // 圣杯 36-49
+  {id:36,filename:"card_36.jpg",name:"圣杯1",nameEn:"Ace of Cups",tag:"圣杯",meaning:"心里有东西在冒泡——可能是一段新感情，也可能是一个让你心动的想法。别把盖子拧上，让它流出来。",detail:{imagery:"一只手从云中伸出来，掌心托着一只圣杯。杯子满到溢出来了，水哗哗往下流成五道瀑布，底下是盛开的荷叶和水花。整个画面就是一个字——「满」。心里有东西多到装不住，必须流出来。",upright:"一股全新的情感浪潮正在涌入你的生命，这是宇宙赠予你的心灵礼物。结合你的问题来看，如果涉及感情：一段新的缘分可能正在靠近，或者现有关系将迎来深度升温——你不需要用力追逐，只需保持心的敞开。如果涉及事业或创意：一个灵感正在降临，它可能以「灵光一闪」的方式出现，不要用理性过早否定它。如果涉及自我成长：这是学习爱自己、接纳自己情绪的绝佳时机——你被允许柔软，被允许流泪，被允许说「我想要」。圣杯1告诉你：爱的源头从未干涸，你只需要放下那个「我不配」的旧信念，伸出手去接。",reversed:"你可能正在压抑自己的情感，或者拒绝接受一份本该流入的爱——也许是过去的伤痛让你筑起心墙。如果你发现自己对任何亲密关系都保持距离：可以试着在今天对一个人说出真实的感受，哪怕只是一句「今天有点难过」。如果你感到灵感枯竭：可以去水边坐坐，或者洗一个长长的热水澡——水元素能温和地疏通情感堵塞。如果你一直在给予却拒绝接受：试着在下次别人称赞你时不条件反射地说「没有啦」，而是说「谢谢你看到我」。圣杯倾倒时恩典并不会消失，只是你需要重新把杯子扶正。",attributes:"数字1——太初之点，一切可能性的种子，也是所有圣杯牌的情感根源。元素属水，掌管情感、直觉、潜意识与灵魂的深层涌动。对应巨蟹座、天蝎座、双鱼座共同守护的水元素之域，尤与巨蟹座的新月能量共振。这对你的问题意味着：答案不在理性的计算中，而在你的感受里——你内心深处已经知道答案了，只是头脑还在找证据。"}},
+  {id:37,filename:"card_37.jpg",name:"圣杯2",nameEn:"Two of Cups",tag:"圣杯",meaning:"两个人对上眼了。不是那种轰轰烈烈的，是那种「嗯，就是你了」的默契。关系平等才是好关系。",detail:{imagery:"两个人面对面站着，各举一只杯子。中间有个带翅膀的狮子头，双蛇缠绕的权杖悬在空中。他们在碰杯——眼神没躲，姿态平等。不是谁追谁，是两股能量刚好碰到了一起。",upright:"一段双向奔赴的联结正在成形，无论是爱情、友谊还是合作关系，核心词是「平等」。结合你的问题来看，如果涉及感情：这段关系有深刻的双向吸引力，不是谁追谁，而是两个完整的人在相遇——保持真诚比制造浪漫更重要。如果涉及合作或商业：一个对等的伙伴关系正在出现，双方资源和优势互补，签署协议或握手合作的好时机。如果涉及自我：你正在学习与自己和解——理性与情感、阳刚与阴柔、坚强与脆弱，不再是对立面。圣杯2说：真正的爱不是找一个人填满你的空缺，而是两个满溢的杯子彼此映照。",reversed:"关系中可能出现能量不对等——你在过度给予而对方只取不予，或者你一直在索取而忽略了对方的需求。如果你发现自己在关系中总是那个「付出更多」的人：可以先停下来，问问自己「如果我停止付出，这段关系还能维系吗」。如果在合作中感到被利用：可以重新审视协议或边界，把「我以为」变成「我们约定」。如果内心一直在抗拒某段本该珍视的关系：也许是过去的背叛让你不敢再信任——试着区分「过去的那个人」和「眼前的这个人」，他们不是同一个人。失衡的关系不会自己变好，你必须有勇气说出那句「这样不公平」。",attributes:"数字2——二元性、对立统一、选择与平衡的张力。元素属水，情感与心灵联结之域。对应金星在巨蟹座，金星掌管爱与价值，巨蟹座赋予深情与呵护——这是最纯粹的「爱情牌」之一。这对你的问题意味着：你正在面对一个关于「关系」的选择或转折，不是孤军奋战，你需要另一个人或另一个版本的自己来共同完成某件事。"}},
+  {id:38,filename:"card_38.jpg",name:"圣杯3",nameEn:"Three of Cups",tag:"圣杯",meaning:"闺蜜时间到了。和朋友们聚一聚、笑一笑，把烦恼倒进杯子里碰一下。快乐翻倍的方式就是分享。",detail:{imagery:"三个女生举着杯子在跳舞，头顶上挂着水果和花环。她们围成一个圈，裙摆飘飘，脸上都是笑的。这就是那种「临时组局结果玩得最开心」的晚上——不是计划出来的快乐，是撞出来的。",upright:"这是属于庆祝和分享的时刻——你完成了一件值得骄傲的事，或者和重要的人之间达成了某种美好默契。结合你的问题来看，如果涉及感情：和伴侣或密友的关系处于蜜月期，去享受它，别急着担忧「这能持续多久」——有些人际关系的意义就在于共度的快乐时光本身。如果涉及事业：一个团队项目的成功值得庆祝，或者同事之间的默契让你感到被支持——别忘了公开感谢那些帮助过你的人。如果涉及自我：你正在从一段孤独期走出来，重新连接社群——答应那个约你出去的邀请，哪怕只是喝一杯咖啡。圣杯3说：喜悦被分享时才会真正翻倍。",reversed:"狂欢可能变成逃避——你用社交填满日程，以避免面对独处时的空虚。或者你感觉被排除在某个圈子之外，那种「大家都在开心唯独没有我」的孤独感正在侵扰你。如果你发现自己害怕安静和独处：可以尝试在今天留出30分钟完全不看手机，只是和自己待着——孤独和独处是两回事。如果你在朋友圈中看到了让人羡慕的画面而产生比较心：提醒自己社交媒体是精选集，而你在看的是自己的幕后花絮。如果你过度沉浸于庆祝而忽略了现实责任：明天的你不会感谢今天宿醉的你——快乐要有，节制也要有。",attributes:"数字3——创造性的表达、群体协作、生命力的向外绽放，是第一张形成稳定结构的牌（三角形）。元素属水，社交情感之域。对应水星在巨蟹座，水星赋予沟通的智慧，巨蟹座注入情感的温暖——这就是为什么好朋友间的聊天总是最治愈。这对你的问题意味着：你不需要一个人扛，你身边至少有两个人可以倾诉和求助。"}},
+  {id:39,filename:"card_39.jpg",name:"圣杯4",nameEn:"Four of Cups",tag:"圣杯",meaning:"你好像什么都懒得做。眼前有三个杯子放着，但你看不到好东西——其实云里还有第四个杯子在等你伸手。别低头了。",detail:{imagery:"一个人盘腿坐在树下，双臂交叉抱在胸前，表情不咸不淡。面前放着三只杯子，他看都不看。但云里伸出一只手递来第四只杯子——他只要抬头就能看到。这就是「身在福中不知福」的那个闷闷的下午。",upright:"你可能正在经历一种「什么都有但什么都不对」的莫名倦怠——这不是外在世界的匮乏，而是内心正在发出一个深层的信号。结合你的问题来看，如果涉及感情：也许有人正在对你释放善意，你却因为过分沉浸在自己的情绪中而看不见——试着抬起头环顾四周，那个在乎你的人可能比你想象的更近。如果涉及事业：你对现状的不满不是坏事，它说明你需要新的挑战——但先确认：你真的充分探索了现有岗位的可能性了吗？如果涉及自我：你正处于一个重要的内省期，这份静默和抽离其实是必要的——但别忘了，冥想太久也会变成逃避。",reversed:"你终于愿意从树下站起来，重新审视那些被你冷落的可能性了。逆位的圣杯4往往是觉醒的前夜——倦怠达到了顶点，反而催生了改变的动力。如果你一直在对某个机会说「不」：可以试着把「我没有兴趣」改成「我可以先了解三分钟」——打开的最小缝隙往往通往全新的世界。如果你发现自己长期处于情绪冷漠状态：这可能是潜意识在用麻木保护你不受伤害，但保护久了就会变成囚禁——可以从重新感受一件小事开始，比如认真吃一口饭，感受食物的温度和味道。圣杯的第四杯从不曾被收回，它一直在等你转头。",attributes:"数字4——稳定、基础、四方框架，但也可能走向僵化和停滞。元素属水，情感审视之域。对应月亮在天蝎座，月亮掌管潜意识与情绪潮汐，天蝎座带来深度的内省与转化导向——这是一张关于「情感冬眠」的牌。这对你的问题意味着：你的不满并非无的放矢，但不满的方向指向向内而非向外——你需要的不是更多选择，而是更深的觉察。"}},
+  {id:40,filename:"card_40.jpg",name:"圣杯5",nameEn:"Five of Cups",tag:"圣杯",meaning:"是，你失去了重要的东西——允许自己难过一下。但别一直盯着倒掉的三杯，身后还有两杯是满的，你回头看。",detail:{imagery:"一个披黑斗篷的人低着头站在河边，面前有三只倒掉的杯子洒了一地。但他的身后还有两只杯子立着——他不知道，因为他没回头。河对面有座桥和一座城堡，出路就在那里，只是他还没转过身。",upright:"你正在经历某种失去——可能是一段关系的结束、一个机会的错过、或者某种信任的崩塌。那种遗憾是真实的，请不要强迫自己「赶快好起来」。结合你的问题来看，如果涉及感情：分手或冷战带来的疼痛不需要立即被修复——允许自己哀悼三天，但三天后请转过身看看身后还立着的那两只杯：你的朋友、你的爱好、你自身的完整。如果涉及事业：一次失败不代表你的能力归零——你失去的只是一个结果，而非你积累的全部经验。如果涉及自我：那些你以为「浪费了」的岁月，其实在你身上沉淀了别人没有的深度——伤口愈合后会变成你独有的纹理。",reversed:"悲伤正在从哀悼走向了自我惩罚——你困在「如果当初…就好了」的循环里，反复鞭打自己。逆位的圣杯5不是在说「不许难过」，而是在说「你难过得够久了，该转身了」。如果你一直在否认自己的悲伤，假装一切都好：可以先承认——对一张纸说「我真的很失望」，写完撕掉它，这个仪式感很重要。如果你执着于重温过往的错误：可以给那件事设一个固定的「哀悼时间」——比如每天傍晚允许自己想15分钟，其他时间当这个念头冒出来时就说「还没到时间」。身后的那两只杯——宽恕和新生——一直站在那里等你转身，它们不会自己走到你面前来。",attributes:"数字5——冲突、危机、打破稳定后的必经动荡，是变革的前奏。元素属水，情感伤痛之域。对应火星在天蝎座，火星带来直面现实的勇气，天蝎座赋予转化的深度——这是一张关于「在破碎中觉醒」的牌。这对你的问题意味着：你现在看到的损失只是全景的一半，另一半在你不愿意转头去看的方向——你的资源和韧性比你想象的多。"}},
+  {id:41,filename:"card_41.jpg",name:"圣杯6",nameEn:"Six of Cups",tag:"圣杯",meaning:"回忆在敲门——不是让你回去，是让你把那份温暖带到今天来。也许是时候给老朋友发个消息，或者接受某人的好意。",detail:{imagery:"两个小孩在一个老房子前面，一个手里捧着插满花的杯子，另一个在闻花香。地面是鹅卵石铺的，背景是祥和的小镇。这就是那种「单纯好时光」的画面——可能是一个小时候的记忆，也可能是今天下午就能发生的事。",upright:"一段来自过去的温暖正在回流——可能是一个老朋友突然联系、一张旧照片让你微笑、或者某种久违的安全感重新浮起。结合你的问题来看，如果涉及感情：你和某个人之间可能有一种跨越时间的情感联结——旧情复燃不是没有可能，或者你和现任之间需要重新找回初遇时的纯粹感。如果涉及事业：一个过去的技能、人脉或经验即将派上用场——你曾经播下的善意的种子正在你不知道的地方发芽。如果涉及自我：童年时期的某个快乐记忆正在提示你——那个天真、好奇、不怕受伤的自己并没有消失，只是被你遗忘在忙碌的日常里了。",reversed:"你可能过度沉湎于过去——用「当年如何如何」来逃避当下的不如意，或者在关系中执着于对方「曾经」的样子而非现在真实的人。如果你发现自己总是在怀旧中感到忧伤：可以试着给过去写一封正式的「感谢信」——感谢它塑造了你，然后明确地告诉它「我现在要去过新的生活了」。如果童年的某些阴影让你无法活在当下：可以考虑在今天做一件你小时候最喜欢做却被大人说「幼稚」的事——画画、搭积木、荡秋千——你有权利用成年人的身份去重新照顾那个小孩。回忆是地图，不是目的地。",attributes:"数字6——和谐、修复、给予与接受的回归平衡，是风暴之后的第一个平静。元素属水，情感记忆之域。对应太阳在天蝎座，太阳照亮潜意识的暗影，天蝎座带来情感的重生之力——这是一张关于「从过去提取力量」的牌。这对你的问题意味着：你的过去不是你的负担，而是你未曾解码的资源库——有些答案藏在你的童年直觉里。"}},
+  {id:42,filename:"card_42.jpg",name:"圣杯7",nameEn:"Seven of Cups",tag:"圣杯",meaning:"七只杯子飘在你面前，每只装着不一样的东西——蛇、珠宝、城堡、月桂叶。眼花了吧？先别看杯子，先搞清楚你到底要什么。",detail:{imagery:"一个人背对我们站着，面前云里飘着七只杯子——每只里面装的都不一样：有的装着人脸、有的装着城堡、有的装着蛇、有的装着一堆宝石。画面有点梦幻，也有点晕。选项太多的时候，一个好答案不如一个好问题：我到底在追什么？",upright:"你正站在太多可能性面前，每一条看起来都闪闪发光——结果你陷入了选择困难甚至动弹不得。结合你的问题来看，如果涉及感情：你可能同时在几个心仪对象之间犹豫，或者对现任关系有着不切实际的幻想——先确认一件事：你爱的是对方真实的模样，还是你脑海中的那个「完美版本」？如果涉及事业：多个机会同时出现时，别被最华丽的那杯吸引——问自己：哪一个选择能让三年后的我感谢今天的自己？如果涉及自我成长：你正在被「想象力」本身诱惑——梦想很美，但没有落地行动它就只是白日梦。圣杯7说：七个杯中只有一个能真正解渴——你需要的是辨识力，而非更多选项。",reversed:"你正在从白日梦中醒来，那些不切实际的幻想开始消散——这是一个清理欲望的好时机。逆位的圣杯7意味着你终于愿意做出选择并付诸行动了。如果你发现自己一直在各种可能性之间摇摆浪费了大量时间：可以做一个「选择截止日」——给每个选项48小时的考察期，时间一到必须划掉一半，直到只剩一个。如果你总是被「看起来很美」的事物吸引后才发现是个坑：下次做决定前，把那个选项的「坏的一面」也列出至少三条——任何只展示完美的东西都值得警惕。幻想是糖衣，你的时间才是那颗药——别让糖衣浪费了药效。",attributes:"数字7——神秘、内在探索、灵性试炼，但也代表幻象与迷失的可能。元素属水，潜意识欲望之域。对应海王星在天蝎座，海王星掌管梦幻、灵感与幻觉之间的微妙边界，天蝎座带来深度与执念——这是一张关于「直面欲望」的牌。这对你的问题意味着：你眼前的困惑不是因为选择太少，而是因为你还没诚实地问过自己「我真正想要的是什么」。"}},
+  {id:43,filename:"card_43.jpg",name:"圣杯8",nameEn:"Eight of Cups",tag:"圣杯",meaning:"你决定走了。面前这些杯子不够——不是它们不好，是你心里有个声音说「还有更好的在前面」。信这个声音。",detail:{imagery:"一个人拄着拐杖，背着行囊，在夜色中离开了堆叠整齐的八只杯子。杯子摆在山坡上，看起来很完整——但他选择了转身。背景有月亮和一条河。这不是落荒而逃，是「我够了，我要去找更好的」。",upright:"你正在做出一个艰难但成熟的决定——离开一个熟悉的环境、关系或阶段，不是因为它坏了，而是因为你变了。结合你的问题来看，如果涉及感情：一段曾经滋养你的关系现在可能让你感到窒息——离开不是因为对方不好，而是你需要在情感上「升级」，这不是背叛，是成长。如果涉及事业：你可能正在考虑离职、转行、或放弃一个投入很多但不再让你兴奋的项目——你在积累的八只圣杯是真实的成就，但它们不能成为你拒绝前进的借口。如果涉及自我：你正在经历一场内在的迁徙，旧的价值观、习惯、圈层正在被重新筛选——带着感恩告别，而不是带着愧疚。",reversed:"你可能知道该走了，但还在犹豫——恐惧未知让你留在已经不滋养你的现状里。或者你在反复「出走-回头」的循环中消耗自己。如果你一直在拖延离开一个让你不舒服的环境：可以问自己「如果我不离开，一年后的我会后悔什么」——后悔的重量往往比恐惧更具体。如果你害怕离开后的孤独：可以先把「离开」拆解成小步骤——今天只做一件事：关注一个你向往的新领域的公众号、或者给你心里的「理想方向」写一页纸的描述。如果你曾经出走又折返：别责怪自己——每次出发都在你内心留下了痕迹，下一次你会有更多地图。逆位的圣杯8在提醒：你的腿已经迈出一步了，现在只需要让另一只脚跟上。",attributes:"数字8——力量、因果、行动与业力，是超越个人意志的推动力。元素属水，情感进行之域。对应土星在双鱼座，土星带来成熟与责任的重量，双鱼座赋予灵性放下的智慧——这是一张关于「带着感恩离开」的牌。这对你的问题意味着：此刻的不舍不是留下的理由，而是你真正在意过的证明——但你已经有资格去寻找下一片水域了。"}},
+  {id:44,filename:"card_44.jpg",name:"圣杯9",nameEn:"Nine of Cups",tag:"圣杯",meaning:"你心心念念的事，成了。现在就是享受的时候——你努力了，你值得这个结果。叉着腰站在杯子前面笑一个。",detail:{imagery:"一个人交叉双臂坐在九只排列整齐的圣杯前面，表情满意得像刚吃完一顿好饭。杯子金光闪闪，背景是温暖的黄色。这就是「我想要的都来了」的那个表情——不是惊喜，是心满意足的笃定。",upright:"这是塔罗中最积极的牌之一——愿望成真，情感满足，你正处在一种「一切都刚刚好」的状态里。结合你的问题来看，如果涉及感情：你正在享受一段稳定、滋养的关系，或者单身状态的你第一次真心感到自足——你不是因为孤独才想要爱情，而是因为完整才准备好分享。如果涉及事业：你的努力正在被看见和认可，某个长期投入的项目即将结出硕果——享受这一刻，你值得。如果涉及自我：你已经完成了某个重要的内在功课——那些曾经让你夜不能寐的焦虑，如今回头看只是成长的必要学费。圣杯9说：满足感不是拥有了更多，而是终于对自己说了一声「够了，很好」。",reversed:"表面富足但内心空虚——你可能在用外在成就填补某种深层的不安。或者你把满足感的门槛设得太高，以至于永远觉得「还不够」。如果你发现自己总是在达成一个目标后立刻追逐下一个，从未停下来享受：可以试试「庆祝延迟」——在完成一件事后强制自己停留24小时不做任何新的追求，只是充分体验成就感。如果你总是用物质和社交媒体的点赞来填充内心的空洞：问自己一个问题——如果没有任何人知道我的成就，我还会觉得它有意义吗？真正的圣杯9不是给别人看的展示柜，而是你自己坐进去很舒服的那把椅子。",attributes:"数字9——接近完成的圆满、积累的智慧、独处中的自我整合。元素属水，情感收获之域。对应木星在双鱼座，木星放大祝福与丰盛，双鱼座赋予灵性圆满的体验——这是一张被传统称为「愿望牌」的幸运之牌。这对你的问题意味着：宇宙正在确认——你走在正确的道路上，你配得上那些让你微笑的事物。"}},
+  {id:45,filename:"card_45.jpg",name:"圣杯10",nameEn:"Ten of Cups",tag:"圣杯",meaning:"家是暖的，心里是满的。幸福不是多大事——是你能指着天空说「你看，彩虹」的时候，身边有人也抬头看。",detail:{imagery:"一对夫妻张开双臂仰望天空，头顶出现一道彩虹和十只排列成弧线的圣杯。他们的两个小孩在旁边跳舞。远处有树、有河、有房子。这就是你能想象到的最圆满的家庭画面——不是完美的家庭，是「刚好是我的」那个家。",upright:"你正在走向真正的「情感圆满」——不是没有矛盾，而是在矛盾中依然选择彼此；不是没有风雨，而是风雨之后还有彩虹。结合你的问题来看，如果涉及感情：你和伴侣（或你与家庭之间）正处于一段深度和谐期——珍惜它，这不是理所当然的，而是你们共同创造出来的。家庭议题如果一直让你困扰，这张牌是和解与修复的吉兆。如果涉及事业：工作与生活的平衡正在达成——你不再用工作填满所有时间，你开始有精力去爱和被爱。如果涉及自我：你终于找到了「归属感」——不论是一个地方、一群人还是一个版本的自己，你不再觉得自己是漂泊的。",reversed:"「完美家庭」的幻象可能是你最大的压力来源——你在追求一个理想化的图景，以至于忽略了现实中已经存在的真实的爱。如果你总是觉得家人/伴侣「不够好」：可以试着一周内只去注意他们做对了的事，把它记下来——你的注意力投在哪里，哪里就会生长。如果你在为了维持「体面」而压抑真实的家庭矛盾：和谐如果是建立在沉默和牺牲之上的，那不是真的和谐——也许今天就是开口说出那个被回避话题的时机。如果你渴望成家却迟迟未果：彩虹不会因为你盯着天空看就快点出现——先把此刻一个人或两个人的生活过到满意，完整的状态才会吸引完整的关系。",attributes:"数字10——完成、圆满、一个循环的终点与下一个循环的起点。元素属水，情感最终之归处。对应火星在双鱼座，火星驱动行动朝向理想，双鱼座将个体情感升华为集体慈悲——这是一张关于「抵达」的牌。这对你的问题意味着：你长久以来的情感功课即将结业——不是问题消失了，而是你终于有了容纳所有不完美的容器。"}},
+  {id:46,filename:"card_46.jpg",name:"圣杯侍从",nameEn:"Page of Cups",tag:"圣杯",meaning:"打开你的天线——有个温柔的灵感或者一段小浪漫正在靠近。你不需要去找，它会自己浮上来，像鱼跳出水面。",detail:{imagery:"一个穿着很讲究的年轻人站在海边，一手托着一只杯子——杯子里冒出一条小鱼在和他说话。他的表情不是惊讶，是「哦，原来你也在这里」的了然。海浪轻柔，天色粉粉的，整个画面都是试探性的温柔。",upright:"一个新鲜的灵感、一段纯真的心动、或者一个让你眼睛发亮的新兴趣正在敲门——请你以孩子的态度去回应它。结合你的问题来看，如果涉及感情：你可能会遇到一个让你感到「心头一暖」的人——先不要急着定义这是爱情还是友情，让关系像小鱼一样先自由地游一会。如果涉及创意或学习：你对某个新领域产生了直觉式的兴趣——别用「这个学了有什么用」来浇灭它，圣杯侍从的学习动力来自心而非功利。如果涉及自我：你内在那个爱玩、好奇、愿意尝试的「小孩」正在苏醒——保护这份嫩芽，允许自己做一个「看起来不太专业」但很开心的事。",reversed:"你可能正在用小聪明逃避真正的情感表达——嘴上说着浪漫的话，心里却不敢真正投入。或者你收到了一个灵感却因为不自信而否定了它。如果你发现自己总是对很多事物三分钟热度然后放弃：可以试试给每个新兴趣设一个「深度日」——不是同时追三个兴趣，而是今天只对一个兴趣投入三小时的完整注意，你会发现浅尝和沉浸的感受完全不同。如果你因为害怕被拒绝而不敢表达心意：可以先从「非直面」的方式开始——写下来，画出来，发一条只对自己可见的动态——先让你的表达被你自己看到，再考虑要不要给别人看。",attributes:"宫廷牌——侍从层级代表元素中水的「土」之面相：情感领域中初学者的态度、好奇心与可塑性。属圣杯宫廷（水中之土），天真、直觉与创造性想象。对应金星在巨蟹座与天蝎座的过渡带——这是情感智慧从萌芽到深化的第一个阶梯。这对你的问题意味着：你在某件事上还是一个新手，但新手有新手最大的优势——没有成见，只有直觉。"}},
+  {id:47,filename:"card_47.jpg",name:"圣杯骑士",nameEn:"Knight of Cups",tag:"圣杯",meaning:"一个充满魅力的人（或机会）正骑着白马过来。浪漫是好事，但确认一下：他带的是花还是空杯子？心动可以，留个心眼。",detail:{imagery:"一个骑士骑着白马，举着一只金色圣杯，盔甲擦得锃亮。马步调优雅，背景是开阔的平原。这就是「全宇宙最浪漫的人来了」的画面——但要小心，你可能爱上的不是他，是他身后的晚霞。",upright:"一份真诚的邀约、一场浪漫的追求、或一次带着理想主义色彩的行动正在展开——圣杯骑士的能量让你愿意为心中的美好信念而采取行动。结合你的问题来看，如果涉及感情：这是最经典的求婚/告白/修复关系的牌——你或某人正带着一颗真心走向对方，不玩技巧，不设防备。如果涉及事业：你正在寻求一份让你「心动」的工作而非仅仅是「高薪」的——跟随你的热情选择，而不是恐惧。如果涉及自我成长：你准备好将内在的感受转化为外在的表达——那些你长久以来只对自己说的话，现在可以变成对世界的宣言了。圣杯骑士说：骑士精神的本质不是完美，而是明知不完美却依然选择以善意出发。",reversed:"你可能正在被表面的浪漫蒙蔽双眼——那个对你殷勤备至的人是否言行一致？或者你本人就是那个「说得好听却从不落地」的人。如果你发现自己陷入了一段「甜蜜但虚幻」的关系：可以做一个简单的测试——看看对方在你最不方便的时候是否还愿意出现，真正的圣杯骑士不挑天气。如果你总是用理想化的滤镜看人导致反复失望：试着在今天列出一个人的三个优点和三个缺点——完整地看一个人比完美化一个人更需要勇气。如果你一直等待着「完美时机」才去表达真心：完美时机不存在，存在的只有「现在」——你那封没有发出去的消息，可能就是那个没有送出的圣杯。",attributes:"宫廷牌——骑士层级代表元素中水的「火」之面相：情感领域的行动者，以理想主义为燃料的追寻。属圣杯宫廷（水中之火），浪漫、追求、以及将情感化为行动的热忱。对应金星在射手座的影响——爱不止是一种感觉，更是一场朝圣之旅。这对你的问题意味着：现在不是徘徊的时候，而是拿起你的圣杯走向那座城堡的时候——你的诚意比你的条件更重要。"}},
+  {id:48,filename:"card_48.jpg",name:"圣杯王后",nameEn:"Queen of Cups",tag:"圣杯",meaning:"你有一种别人学不来的本事：你能接住眼泪。你的直觉和共情力是你最强的雷达——别关掉它，也别让它过度消耗你。",detail:{imagery:"一个穿白袍的女性端坐在海边王座上，双手捧着一只极其精美的圣杯在凝视。杯子有盖子，她在看什么——也许是看自己的倒影，也许是看杯子里的秘密。她的表情不是悲伤，是「我深，所以我能容纳你」。",upright:"你正在被邀请进入一种深度的情感智慧——不是激烈的表达，而是宁静的洞察。结合你的问题来看，如果涉及感情：你需要发挥圣杯王后的「深度共情」能力——不是急于解决问题，而是先让对方感到被真正理解。如果你自己需要被关爱，现在就是照顾自己情绪的好时机——泡一个热水浴、写日记、或者找一个安全的人倾诉。如果涉及事业：你的直觉在决策中的分量正在上升——有些数据解释不了的东西，你的「感觉」可以。如果涉及助人行业或疗愈工作：你正处于能量的高峰期，你的在场本身就是一种滋养。圣杯王后说：世界上最深的智慧不在头脑里，在心里。",reversed:"你可能过度共情以至于牺牲了自我边界——你在为别人的情绪承担过多责任，导致自己的情绪被掏空。如果你总是当朋友的「情绪垃圾桶」后感到精疲力竭：可以学着在倾听之前先说「我只有二十分钟，但我愿意在这二十分钟里全心地听」——设限不是冷漠，是可持续的慈悲。如果你因为过于依赖直觉而忽略了现实：直觉需要和理性合作而非对立——下次做决定时试着同时列出「心怎么说」和「脑怎么说」，然后找交集。如果你在关系中过度付出母性般的关怀而失去了对等：你不是任何成年人的妈妈——把自己从「照护者」的位置上适度撤出，你会发现对方其实有能力照顾自己。",attributes:"宫廷牌——王后层级代表元素中水的「水」之面相：情感领域中最纯粹的水象能量，直觉、共情、无条件的接纳与深邃的内在世界。属圣杯宫廷（水中之水），最接近情感本源的智慧。对应月亮在双鱼座——潜意识之王，梦境之母。这对你的问题意味着：你需要少想一点，多感受一点——答案以「身体知道」的形式存在着，而不是以「逻辑推导」的形式。"}},
+  {id:49,filename:"card_49.jpg",name:"圣杯国王",nameEn:"King of Cups",tag:"圣杯",meaning:"你的情绪很稳，像海面下的深流。别人乱成一团的时候，你能端住。这是能力，也是责任——有人会来靠你。",detail:{imagery:"一个成熟的男人坐在海中央的王座上，手里握着圣杯和权杖。他身后有船、有鱼跃出水面，但他表情平静。海水在他周围翻涌，但他稳如磐石。这就是「什么大风大浪没见过」的那种稳。",upright:"你正在被召唤成为情感领域的成熟掌控者——不是压抑情绪，而是理解它们、疏导它们、并让它们为你服务而非支配你。结合你的问题来看，如果涉及感情：你或你的伴侣正在展现出高度的情感成熟度——能在冲突中保持镇定，能在温柔中坚持原则。如果你是单身，这张牌提示你已经准备好了——你不再需要一个「拯救者」，而是一个同行的旅伴。如果涉及事业：你的领导力来自于你能理解团队成员的情绪需求——你是那个能在风暴中让大家安心的人。如果涉及自我成长：你已经从一个被情绪左右的人，变成了一个能与情绪共处的人——这份沉稳是你过去所有风浪换来的勋章。",reversed:"你可能在用「冷静」掩盖「冷漠」——表面波澜不惊，实际上已经切断了感受的能力。或者你在情感中过度控制，试图操纵他人以维持表面的和平。如果你发现自己对任何情感刺激都「没有感觉」了：这不是成熟，是麻木——可以从重新接触艺术开始恢复感知力：今天去看一幅让你有反应的画、或听一首能让你眼眶发热的歌。如果你在关系中以「我是为你好」为名实施情感操控：真正的圣杯国王从不替别人做决定——试着在下一次对话中把「你应该」改成「你觉得呢」。如果你是男性且被教导「男人不能有情绪」：你的眼泪不是弱点，是你尚未被开采的情感黄金。",attributes:"宫廷牌——国王层级代表元素中水的「风」之面相：情感领域的统御者，将情感智慧转化为可用的判断力和领导力。属圣杯宫廷（水中之风），是情感与理智达到平衡的最高成就。对应太阳在天蝎座——拥抱阴影才能成为完整的自己。这对你的问题意味着：你不再是情感海洋中的一叶扁舟——你就是那个能够安抚波涛的人，前提是你先安抚好了自己内心的风暴。"}},
+  // 宝剑 50-63
+  {id:50,filename:"card_50.jpg",name:"宝剑1",nameEn:"Ace of Swords",tag:"宝剑",meaning:"一个清晰的想法突然刺破迷雾——就是那种「啊哈」时刻。真理有时候很锋利，但它是干净的。接住。",detail:{imagery:"一只手从云中伸出来，握着一把宝剑——剑尖朝天，剑身闪闪发光。剑上套着王冠和棕榈枝，底下是远山。整个画面干净利落，像刚做完决定那一刻的清晰感——不拖泥带水。",upright:"这是一张关于「顿悟时刻」的牌。结合你的问题来看，你即将获得一个清晰的答案，或者需要做出一个干净利落的决定——不拖泥带水、不被情感绑架的那种。如果涉及感情：诚实比委婉更能保护关系，说出那个你说不出口的话。如果涉及工作：是时候把模糊的想法打磨成一个明确的方向了，哪怕它还不完美。如果涉及学业：你的思维此刻锋利如刀，适合攻克最难的那个知识点。",reversed:"你可能困在理性过度的状态里——想得太多却寸步难行，或者用「讲道理」来回避真正的感受。如果你发现自己一直在分析但从未行动：把分析的力气用在第一步上，今天只做一件事。如果你习惯用逻辑武装自己而推开亲密：可以试着和信任的人说一句「我不知道该怎么办」，这本身就是智慧的开始。",attributes:"数字 1 —— 元始之力，纯粹的「是」与「开始」，没有犹豫也不留退路。元素属风中之风（宝剑首牌），代表思维领域最纯粹的第一推动力，是天秤座、水瓶座、双子座等风象能量的源头。对应冥王星的穿透力——这一剑下去，表面伪装全部碎裂，只剩真实。这对你的问题意味着：别绕弯子，直面核心矛盾。"}},
+  {id:51,filename:"card_51.jpg",name:"宝剑2",nameEn:"Two of Swords",tag:"宝剑",meaning:"你双手交叉挡在胸前，蒙着眼睛拿着两把剑——你不是真的看不见，是还在逃避选择。放下手，看一眼。",detail:{imagery:"一个人坐在石凳上，蒙着眼睛，双手交叉各握一把剑。背后是平静的海面和月亮。剑握得很紧，但平衡很脆弱。这不是「没有选择」，是「有选择但不想选」——你闭着眼，但剑还在你手里。",upright:"你正处在一个「需要暂停」的时刻——不是没有答案，而是所有答案你都看到了，却暂时不想选。结合你的问题来看，这个暂停期有它的价值：它在保护你不做出仓促的选择。如果涉及感情问题：两边的声音都有道理，但请先问自己的身体感受——胃紧不紧、肩膀硬不硬——身体比大脑诚实。如果涉及工作：暂时按兵不动是明智的，给自己设一个截止日期即可。",reversed:"你必须放下那把用来防御的剑了。僵持不动的代价正在超过做出错误决定的代价。如果你一直在回避某个重要选择：可以把每个选项写在一张纸上，抽签一样随机翻开一张——你的第一反应「高兴还是失望」会告诉你真正的答案。如果你因为害怕伤害谁而不敢表态：沉默有时候比实话更有伤害力。",attributes:"数字 2 —— 二元对立与平衡，但也意味着对峙中的暂时静止。元素属风，宝剑代表理性，但数字 2 引入了月亮的感性拉扯——理性和直觉正在拔河。对应天秤座能量，在两端之间摇摆。这对你的问题意味着：你不需要更多的信息，你需要的是勇气去感受自己的倾向。"}},
+  {id:52,filename:"card_52.jpg",name:"宝剑3",nameEn:"Three of Swords",tag:"宝剑",meaning:"心疼是真的。三把剑穿透一颗心——失恋、被背叛、被伤害，都算。允许自己哭，哭完了血会止住的。",detail:{imagery:"三把利剑直直地刺穿一颗悬浮在空中的红色心脏。背景是灰蒙蒙的雨云。画面非常直接——不拐弯抹角，就是疼。但心脏还是红的，还在跳，说明你不是被毁掉了，你只是被刺穿了——而心脏是可以愈合的。",upright:"你正在经历某种形式的「伤心」——可能是失望、背叛、分离，或是某种理想的幻灭。结合你的问题来看，这张牌不是来恐吓你的，而是来确认你的感受是真实的——那个痛不是你在「想太多」。如果涉及感情：允许自己哭一场，悲伤不是软弱，是心灵在自我清洗。如果涉及事业或学业：某个你一直相信的东西可能崩塌了，但这恰好为你腾出了重建的空间。",reversed:"你在逃避痛苦，或者把痛苦压得太深——但被压抑的情绪会在身体里找到出口，变成失眠、疲劳、不明原因的烦躁。如果你害怕面对某个让你伤心的事：可以只给自己五分钟去感受它，设定计时器，到时间就停——你会发现控制感回来了。如果你习惯了用忙碌来麻痹自己：今天留一段空白时间，什么都不做。",attributes:"数字 3 —— 生长、扩展与表达的法则。元素属风，但浸润在水的悲伤中——理性遭遇情感的重击。对应土星的考验能量：这个伤痛有结构性的意义，是人生重大成长的前奏。占星上与天秤座相关，关乎关系的失衡与修正。这对你的问题意味着：这个伤口里藏着你最需要学习的功课。"}},
+  {id:53,filename:"card_53.jpg",name:"宝剑4",nameEn:"Four of Swords",tag:"宝剑",meaning:"脑子转不动了？正常。把手机静音、躺平、什么都不想——休息不是偷懒，是给大脑充电。",detail:{imagery:"一个骑士的雕像平躺在一个教堂的彩色玻璃窗下，双手合十放在胸前——不是在祷告，是在喘口气。一把剑横放在棺材侧面，另外三把挂在墙上。这是一个「所有人都出去让我一个人待着」的姿势。",upright:"你的身体和心都在喊「休息」——这不是懒，是战略性的暂停。结合你的问题来看，你刚经历了一段高强度消耗（无论是工作、情绪还是人际），现在最智慧的做法就是停下来。如果涉及工作：加班不会让你更接近目标，但一觉好眠会。如果涉及感情冲突：暂时分开冷静比继续争辩更有效。如果涉及健康：你的身体已经在给你信号了，请尊重它。",reversed:"你可能在休息中感到焦虑——「躺平」让你觉得自己在浪费时间。但这张牌在逆位提醒：如果你的休息是表面的（刷手机、焦虑地发呆），那不算真正的休息。如果你发现自己「休息」后更累：可以尝试真正的恢复性休息——不看屏幕、不接收信息、只是存在。如果你过度休息变成了逃避：给自己设一个明确的「重返日」。",attributes:"数字 4 —— 稳定、秩序与回归大地，代表在动荡后建立基础。元素属风中的土象能量：思维需要扎根、需要停泊。对应木星在射手或双鱼的宽慰之力——乐观和信念会在休息中重生。这对你的问题意味着：你现在不需要找出答案，你需要恢复找到答案的能力。"}},
+  {id:54,filename:"card_54.jpg",name:"宝剑5",nameEn:"Five of Swords",tag:"宝剑",meaning:"你赢了嘴上官司，但代价可能是身边的关系。问问自己：这场架真的值吗？赢了面子输了里子的事情，三思。",detail:{imagery:"三个人背对着离开海滩，两个低着头，一个回头看了一眼。前景是一个得意的人手里拿着三把剑，嘴角上扬。风很大，天空乱糟糟。这不是「胜者为王」，是「赢了但没人陪了」——空气中全是尴尬。",upright:"你可能正处在一个竞争局面中，而且你有可能「赢」——但请看清楚赢的代价。结合你的问题来看，如果这是一场必须分出高下的情境：你确实有能力获胜，但请选择体面的方式——留有余地比赶尽杀绝更长远。如果涉及职场竞争：守住底线，赢了职位输了人品不值得。如果涉及人际矛盾：是对方错不代表你就要让对方难堪。有时候「算了」才是最高级的赢。",reversed:"你可能刚经历了一场无意义的争吵或竞争，现在感到疲惫和后悔——或者你不肯承认自己输了，还在内耗。如果你发现自己陷在「必须证明我对」的泥潭里：可以想想五年后你还会在意这件事吗。如果你在回避和解：写一句道歉或理解对方的话，哪怕不发出去，这个过程会消解你的部分敌意。有些仗不值得赢。",attributes:"数字 5 —— 冲突、动荡与突破常规的力量。元素属风，代表观念的碰撞与思维的角力。对应火星在水瓶的能量——既好斗又疏离，既想赢又想保持距离。这对你的问题意味着：你正在经历一场价值观的交锋，关键不是谁对谁错，而是你选择成为怎样的人。"}},
+  {id:55,filename:"card_55.jpg",name:"宝剑6",nameEn:"Six of Swords",tag:"宝剑",meaning:"你在过渡期——船正从混乱的这一岸渡到平静的那一岸。别回头看，前面水面会越来越平的。",detail:{imagery:"一个披着斗篷的人抱着头坐在小船里，船上有六把剑插着。一个撑船的人站在船尾，正在把船推离岸边。水面近处有波纹，远处越来越平。这就是「带着伤离开」的画面——你没痊愈，但你在动了。",upright:"你正在从一段困难中「渡过去」——虽然还没有靠岸，但最难的已经在你身后了。结合你的问题来看，你可能需要主动离开某个环境、某段关系、或某种思维模式，才能迎来平静。如果涉及感情：主动结束一段消耗你的关系不是失败而是导航。如果涉及工作：换岗位、搬家甚至换城市都在牌的鼓励范围内。如果涉及心理状态：你不需要「治好自己」，你只需要换一个环境让治愈自然发生。",reversed:"你拒绝离开一个已经不服务于你的处境——可能是恐惧未知，可能是沉没成本太大。如果你知道自己身处困境却不愿意改变：可以想想不是「离开」而是「前往」——你的方向感会更强。如果你觉得离开就是认输：船上有孩子和女人——离开需要更大的勇气，你才是勇敢的那个。",attributes:"数字 6 —— 和谐、复原与责任感的数字。元素属风遇水，理性在情感中获得平衡。对应水星在水瓶——冷静而有远见地做出移动的决定。这对你的问题意味着：有些问题的答案不在原地，必须换个角度、换个地方才能看见——而你现在正好有了出发的条件。"}},
+  {id:56,filename:"card_56.jpg",name:"宝剑7",nameEn:"Seven of Swords",tag:"宝剑",meaning:"你在偷偷摸摸地做一些事——可能是不敢正面解决，也可能是需要灵活操作。注意分寸：智慧过了头就是滑头。",detail:{imagery:"一个人抱着五把剑踮着脚尖从一个营地往外溜，回头看有没有人发现。地上还插着两把剑——那是他留给别人的。表情有点得意，但更多的是紧张。这就是那种「唉我偷偷把事办了，希望没人注意到」的操作。",upright:"你可能需要一种「不那么光明正大」但也不伤人的策略——比如绕开官僚流程、用巧劲而不是硬刚、或者保持信息上的优势。结合你的问题来看：直来直去未必是最佳路径，有时候侧面切入更有效率。如果涉及工作：你的好点子不要急于公布，先做好自己的准备。如果涉及竞争：你不需要比对手强十倍，只需要在关键信息上快半步。如果涉及学业：善用策略性学习——抓重点比全面覆盖聪明。",reversed:"你可能在用「小聪明」掩盖自己的不自信，或者有人正在对你使用这招而你浑然不觉。如果你发现自己在耍小手段：问问自己为什么不相信可以光明正大地拿到想要的东西——那个「不信」才是真正的敌人。如果你感觉被人忽悠了：不要立刻翻脸，先悄悄核实事实——宝剑七的逆位提醒你警惕但不妄动。",attributes:"数字 7 —— 灵性觉醒、内在省思与独行。元素属风，代表智力的独立运作和策略性思考。对应水星在双子或处女——敏捷机智、审时度势的能力。这对你的问题意味着：常规方法可能行不通，你需要发挥创造力，走一条别人没走过的路——只是在走之前先确认方向没错。"}},
+  {id:57,filename:"card_57.jpg",name:"宝剑8",nameEn:"Eight of Swords",tag:"宝剑",meaning:"你觉得被捆住了——不好意思，那些绳子是你脑子里编出来的。没有人在锁着你，你的想法才是那把锁。",detail:{imagery:"一个女人被蒙着眼睛绑在八把剑中间——剑插在地上围成一圈，她站在中间动弹不得。但她脚下有水，脚踝没被绑住，远处还有一座城堡。其实她只要推开一把剑就能走出来——她只是不知道自己可以。",upright:"你可能觉得被困住了——但真实的处境没有你想的那么绝望。结合你的问题来看，限制你的更多是「你觉得不行」而不是「真的不行」。如果涉及工作：你不是没有选择，你只是把所有的路都提前否定了。给自己列一个「哪怕荒谬也可以试试」的选项清单。如果涉及感情：你可能被自己的想法捆绑了——「说了也没用」「他不会理解的」这些都是蒙眼的布，不是现实的墙。先迈一步再说。",reversed:"你现在正在解开那些捆绑——但过程可能不舒服，就像长期麻痹的手恢复知觉时会发麻。如果你开始意识到自己是有选择的：可以从最小的一步开始证明给自己看——比如今天做一件你一直说「我不行」的小事。如果你身边的人提醒你「你以前不是这样的」：感谢他们，他们在帮你认出路在哪里。",attributes:"数字 8 —— 力量、因果与循环完成。元素属风受困，代表思维陷入自我设限的模式。对应土星限制性的能量——但限制往往是我们自己同意的。这对你的问题意味着：困境是真实的，但钥匙也在你自己手里——你需要先摘下眼罩才能看见门在哪里。"}},
+  {id:58,filename:"card_58.jpg",name:"宝剑9",nameEn:"Nine of Swords",tag:"宝剑",meaning:"半夜醒了又睡不着？脑子像跑马灯一样停不下来——懂，但这种恐惧绝大多数不会真的发生。掀开被子，看窗外，天没塌。",detail:{imagery:"一个人坐在床上双手捂着脸，背后墙上挂着九把剑——整整齐齐，像一排威胁。被子上绣着玫瑰和星座图案，窗外其实有光透进来。这是那种「凌晨三点脑子里全是灾难片」的经典场景——但仔细看，没有一把剑是真的刺到她的。",upright:"你可能正在经历过度思虑的夜晚——脑子里不停地重演已经发生的事或者预演最坏的结果。结合你的问题来看，你的恐惧80%是关于「万一」而非「已经」。如果涉及学业或工作压力：那些深夜冒出来的灾难性想法，天亮之后请用纸笔检验——写出最坏情况、最好情况、最可能情况，你会看到差距。如果涉及健康焦虑：你的身体因为焦虑而出现的症状，往往比你所担心的病本身更可控。",reversed:"最深的黑暗即将过去——你开始意识到那些焦虑的念头只是念头，不是预言。如果你仍然在深夜被思绪折磨：可以尝试起床开灯、把每一条担忧写在纸上，写完关灯——这个仪式会给大脑「已处理」的信号。如果你是因为内疚而失眠：找一个方式做出弥补或者接受自己的不完美，「我已尽力」这句话请对自己说一遍。",attributes:"数字 9 —— 完成前的最后阶段，接近终点但也是最孤独的时刻。元素属风过载，代表理性过度运转导致的自我折磨。对应火星在双子——思维如野火蔓延不可控。这对你的问题意味着：你需要区分「确实需要解决的问题」和「只存在于脑海中的问题」——列表写出来，你会发现后者比前者多得多。"}},
+  {id:59,filename:"card_59.jpg",name:"宝剑10",nameEn:"Ten of Swords",tag:"宝剑",meaning:"触底了。最糟糕的已经发生了——那接下来就只剩一件事：往上走。别怕，谷底虽然冷，但你已经在反弹的方向上了。",detail:{imagery:"一个人趴在地上，背上插了十把剑。但天边有光——海平线和天空交界的地方正在变亮。这不是死亡画面，是「最坏的情况就这样了，比你想象中更惨，但也没把你完全消灭」——然后光线开始渗透。",upright:"有一个阶段彻底结束了——不是你输了，而是这件事的「剧情」已经演完了。结合你的问题来看，你可能正站在一个谷底，但好消息是：谷底之后只有一个方向，就是向上。如果涉及感情：一段关系如果已经到了十把剑的地步，放手不是悲剧，是让日出照进来的动作。如果涉及事业：一个项目、一份工作或一个阶段的完结，请把它当作「毕业」而非「被开除」。如果涉及心态：承认「我被打倒了」之后，你才能站起来。",reversed:"你在拒绝接受一个已经结束的事实——或者说你躺在剑下面不肯起来，不是因为起不来，而是因为起来就意味着承认那一切真的结束了。如果你一直在回忆「如果没有……」：那些剑已经存在了，接受它们的存在才能拔出它们。如果你觉得「完了」：请看看这张牌——天已经亮了，只是你还趴着没看到而已。",attributes:"数字 10 —— 圆满与终结，一个完整周期的闭合。元素属风抵达终点，代表思维模式的彻底更新——旧的认知框架必须死去才能诞生新的。对应太阳在双子——黎明前的最终黑暗，但也意味着黎明必然会到来。这对你的问题意味着：这不是结束，这是某个章节的最后一页——下一页是空白的，你可以写新的东西了。"}},
+  {id:60,filename:"card_60.jpg",name:"宝剑侍从",nameEn:"Page of Swords",tag:"宝剑",meaning:"像个侦探一样去搜集信息。你现在需要的不是答案，是更多的线索。睁大眼睛，竖起耳朵——碎片快拼起来了。",detail:{imagery:"一个年轻人站在风中，双手举着一把剑朝天——像是在试剑的重量和平衡。背景是快速移动的云和几只飞鸟。这就是「刚拿到新信息，正在快速消化」的阶段——不急着下结论，先感觉一下。",upright:"你身上有一种「初学者」的光芒——对新知识的渴望、对真相的好奇，是你此刻最强的武器。结合你的问题来看，你可能正在学习某项新技能或进入一个新领域：不要因为自己是新人就退缩，恰恰是你的「新」让你能看到老手看不到的东西。如果涉及沟通：你有一个想说还没说的话，宝剑侍从鼓励你用一个聪明的方式表达出来——不是情绪发泄，是带着洞察的真诚。你的好奇心此刻是最好的导航。",reversed:"你可能有满脑子的想法但都不落地——像一个下载了很多课程但从未打开的人。逆位的宝剑侍从提醒：信息不等于知识，知识不等于智慧。如果你发现自己一直在「收集」却不「消化」：今天关掉所有输入的通道，只做输出——写一篇总结、画一张图、教别人一个概念。如果你在沟通中变得刻薄或者冷嘲热讽：那把剑是用来切开迷雾的，不是用来刺人的。",attributes:"宝剑侍从代表风元素的地球面向——理性在初级阶段的表现：求知欲、观察力与表达的冲劲。他是一个信息收集者与真相的学徒。对应信息传播与沟通的少年能量。这对你的问题意味着：保持好奇比找到答案更重要，答案会在探索过程中自然浮现——你是学生也是老师。"}},
+  {id:61,filename:"card_61.jpg",name:"宝剑骑士",nameEn:"Knight of Swords",tag:"宝剑",meaning:"想到了就干！你的思维速度正在峰值，言语和行动都像出鞘的剑——快而有力。但注意：话说太快容易伤到人。",detail:{imagery:"一个骑士骑着白马全速冲刺，高举宝剑，马鬃和人的披风都被风吹得向后拉直。他表情专注，眼神锁定前方。这就是「有了想法立刻冲」的人——效率第一，但有时候需要刹个车看看路边有没有人。",upright:"你现在需要像这张牌一样——想到了就冲，不等万事俱备、不等所有人都同意。结合你的问题来看，你可能已经思考太久了，现在是行动压倒一切的时刻。如果涉及工作：那个你反复修改但迟迟没提交的方案，今天交出去——完美的 70 分比不出手的 100 分有价值。如果涉及感情：直接说出你的想法和需求，不要绕弯子，速度感反而能冲破尴尬。如果涉及自我成长：全速奔向你的目标，但记得偶尔回头看看有没有撞到人。",reversed:"你冲得太快或者完全没有方向地乱冲——热情有余、策略不足。如果你发现自己最近总是「开始得很猛但结束得很潦草」：可以给自己设定一个小而明确的目标而不是一个大而模糊的方向。如果你在冲动中伤害了别人：逆位的宝剑骑士需要学会刹车的艺术——道歉不需要等「合适的时机」，现在就去说一句就好。",attributes:"宝剑骑士代表风元素的火之面向——理性被激情点燃：思维的速度、决策的果断、行动力的爆发。他是四骑士中最快的那个。对应变动星座的冲刺能量（双子、处女、射手、双鱼的某种组合）。这对你的问题意味着：不要再等了，时间窗口不会一直开着——但冲刺之前先校准方向。"}},
+  {id:62,filename:"card_62.jpg",name:"宝剑王后",nameEn:"Queen of Swords",tag:"宝剑",meaning:"你经历过的事让你变锋利了——不是变刻薄，是边界感很强。你的「不」说得干净利落，这是你的铠甲，别为它道歉。",detail:{imagery:"一个成熟女性坐在王座上，一手举剑朝天，一手伸出——像是在接收，又像是在拒绝。她的表情不冷，但也不热——是那种「我对自己的决定很清楚」的淡定。背后有蝴蝶在飞，说明她不是没有柔软，只是不随便给。",upright:"你正被召唤以「宝剑王后」的品质来应对当前局面——用清晰、独立和富有经验的理性来判断，但别忘了你的同理心。结合你的问题来看，你可能需要设置一条边界：对不合理的要求说「不」，同时保持温柔。如果涉及感情：一个成熟的人不是没有需求，而是能清晰地表达需求而不带攻击性。如果涉及事业：你过往的伤痛不是伤疤，是你的技术手册——你因为经历过所以看得更准。",reversed:"你可能在用「理性」封闭自己的情感——显得冷漠、刻薄或高高在上。逆位的宝剑王后提醒：清醒不等于无情。如果你发现自己最近对人特别挑剔或不耐烦：那可能是你对自己太过苛刻的投射——先对自己温柔一点。如果你在某个领域变得「太有经验以至于听不进别人的话」：可以找一个晚辈或新手聊聊，听听新鲜的视角。",attributes:"宝剑王后代表风元素的水之面向——理性被情感淬炼过的成熟形态：敏锐的洞察加上深沉的共情力。她是经历过痛苦而变得清醒的人，是天秤座、水瓶座的成熟女性原型。对应金星在风象星座——既有边界的爱又有清晰的判断。这对你的问题意味着：你需要像对待最好的朋友那样对待自己——诚实但不残忍，清醒但不冷酷。"}},
+  {id:63,filename:"card_63.jpg",name:"宝剑国王",nameEn:"King of Swords",tag:"宝剑",meaning:"用脑子领导，别用心结。你是现在最清醒的那个人——别人在情绪里打转的时候，你能一条一条把逻辑捋清楚。",detail:{imagery:"一个男人端坐在王座上，手握直立的宝剑，另一只手搭在扶手上。他身后的披风是紫色的，表情像法官一样——不笑，但不是冷酷，是审慎。这就是「我不靠情绪判断，我看事实」的人的最高形态。",upright:"你正处于需要「宝剑国王」品质的时刻——冷静的判断、清晰的边界、以及对真相的无条件尊重。结合你的问题来看，情绪化的决定会带来更多麻烦，你需要像一个公正的法官那样审视整个局面，包括审视自己的偏见。如果涉及事业：用逻辑和数据说话，克制住拍桌子的冲动。如果涉及人际纠纷：先收集所有事实再表态，不要被任何一方的情绪带跑。你的冷静不是冷漠，是对所有人最大的负责。",reversed:"你可能在用权威压制他人，或者用「讲道理」来逃避情感的介入——一个滥用理性的人比一个情绪化的人更难沟通，因为他以为自己永远是对的。如果你发现周围的人都「不敢跟你说真话」：可能你无意中建立了一座理性堡垒，别人无法靠近。可以试着在说「我明白」之前先说「我在听」。如果你被一个权威人物压制：你有权利质疑——真正的权威经得起质疑。",attributes:"宝剑国王代表风元素的土之面向——理性到达最成熟、最稳固的阶段：不是思维的闪烁而是思维的体系。他是法官、战略家、思想领袖的原型，对应水瓶座、天秤座的成熟男性能量，也带有土星的结构感。这对你的问题意味着：你需要把自己抽离出来，从一个更高的角度鸟瞰全局——答案会像地图一样清晰展开。"}},
+  // 星币 64-77
+  {id:64,filename:"card_64.jpg",name:"星币1",nameEn:"Ace of Pentacles",tag:"星币",meaning:"一个新的赚钱机会、一门新手艺、一个踏实的开端正在门口等着。不是什么天上掉馅饼——是那种你能抓得住、做得起来的实在机会。",detail:{imagery:"一只手从云中伸出来，掌心平托着一枚大金币，硬币上刻着五角星。底下是一片精心打理的花园——有拱门、有篱笆、有小路。这不是「飞来横财」，是「你好好种了地，土地扛得住」。",upright:"一扇关于金钱、健康或实际资源的新大门正在为你敞开。结合你的问题来看，这不是「可能有机会」，而是宇宙已经把种子放在你面前了。如果你的问题涉及财务：留意一个具体的增收渠道，它可能以你之前忽略的形式出现。如果涉及感情：这段关系有落地生根的潜力，从一顿认真做的饭开始比一百句承诺更真实。如果涉及事业：把那个纸上的想法变成最小可执行的原型，先赚到第一块钱再说。",reversed:"你可能错过了一个近在咫尺的机会，或因为害怕失去而不敢接收本该属于你的丰盛。如果你一直在等一个完美时机：那个永远不会来的时机不是时机，是借口——今天就可以把那个想法写成一页计划书。如果你对金钱有羞耻感或匮乏信念：试着做一次「金钱对话」练习，把你对钱最早的负面记忆挖出来，看见它就是疗愈的开始。",attributes:"数字 1 —— 纯粹的开端，种子状态，代表新计划的起点与原始驱动力。元素属土，物质、身体、金钱与现实建构的领域。对应摩羯座、金牛座、处女座等土象星座的踏实能量。这对你的问题意味着：这不是一个关于「想法」的答案，而是一个关于「行动」的答案——宇宙不是在让你许愿，是在让你动手。"}},
+  {id:65,filename:"card_65.jpg",name:"星币2",nameEn:"Two of Pentacles",tag:"星币",meaning:"你在同时兼顾好几件事——左手倒右手，忙得像个杂技演员。能撑，但也别忘了偶尔停下来喘口气。",detail:{imagery:"一个人站在海边，一手拿一枚金币，在两个硬币之间来回调整——像在掂平衡。背景有两艘大船在海浪里颠簸，但这个人表情并不慌张。这就是「忙碌但还不至于失控」的状态——动态平衡，不停在微调。",upright:"你正在同时处理多件事情，资源和精力需要灵活调配，这正是考验你「动态平衡」能力的时候。结合你的问题来看，忙不是坏事——坏的是在忙乱中失去了自己的节奏。如果涉及财务：现在是重新分配预算的好时机，把一项不合理的支出砍掉，补给更重要的方向。如果涉及工作：你手上可能有两个以上的项目在同时推进，不必急着做选择——先学会用日历或看板把优先级排清楚。如果涉及感情：忙碌不是冷落的理由，五分钟的高质量陪伴胜过一整晚的漫不经心。",reversed:"你已经被过度的责任压得喘不过气了——要么是承诺了太多无法兑现，要么是在错误的优先级里消耗自己。如果你感到「做了很多却什么也没完成」：做一次残酷的优先级断舍离，把清单上排在最后的三件事直接划掉。如果你因为害怕失去而同时抓住所有选项：你可以试试把一颗星币放下——你会发现放下了反而两只手都更稳了。",attributes:"数字 2 —— 二元对立与平衡之道，选择、调和与动态张力。元素属土，但加入了水（海浪）的流动感——这是土象牌组中最「动」的一张牌。关联木星在摩羯座，代表在限制中找到扩张的智慧。这对你的问题意味着：答案不在「选A还是选B」，而在于「如何在A和B之间找到你自己的节奏」。"}},
+  {id:66,filename:"card_66.jpg",name:"星币3",nameEn:"Three of Pentacles",tag:"星币",meaning:"别一个人闷头干——找个靠谱的人搭把手。你的手艺在团队里会被磨得更亮。边做边学，边学边做。",detail:{imagery:"三个人站在一个教堂里——一个石匠拿凿子在修柱子，两个持图纸的人在和他讨论。墙上挂着三枚金币摆成三角形。这不是一个天才在工作，是一个团队在打磨——慢，但出来的东西经得起时间。",upright:"你的才能正在被看见，而团队合作是当下打开局面的关键。结合你的问题来看，有些事情你一个人做不了——不是因为不够好，而是因为它本来就需要不同视角的碰撞。如果涉及工作或学业：主动去请教一位比你更有经验的人，或者把你的草稿拿给信任的同伴看——别人的眼睛能看见你自己忽略的盲点。如果涉及感情：好的关系不是完美个体的相遇，而是两个人愿意一起「雕刻」同一样东西。你正在这个阶段。",reversed:"你可能在团队中感觉不被重视，或因为过度追求完美而拒绝与人合作。如果你的作品一直「还没做好所以不给别人看」：你可以把完成度设定在70%就拿出来交流——早期反馈比你独自打磨更有价值。如果你觉得团队拖了你的后腿：先确认问题是出在沟通上还是能力上，前者可以通过一次坦诚的会议解决，后者需要你更有策略地分配任务。",attributes:"数字 3 —— 三位一体的创造能量，合作、表达与初步成形。元素属土，代表技艺的精进与物质的建造。关联火星在摩羯座，将行动力注入持久的建构中。这对你的问题意味着：你需要承认「我不能什么都自己做」，并且把这个承认视为力量而不是弱点。"}},
+  {id:67,filename:"card_67.jpg",name:"星币4",nameEn:"Four of Pentacles",tag:"星币",meaning:"你把钱和感情都攥得太紧了。安全感不是靠死死抓着来的——松一点，该花的钱花，该给的爱给。",detail:{imagery:"一个人坐在一块石头上，头顶顶着一枚大金币，脚下踩着两枚，怀里还抱着一枚。背后是城镇的远景。表情不是满足而是防备——他怕别人拿走他任何东西。这不是「会理财」，是「被财产绑住了自己」。",upright:"你在财务或资源管理上展现出极强的控制力，这是好事——但要注意「守住」是否已经悄悄变成了「困住」。结合你的问题来看，存钱、保守投资、稳扎稳打都是当下聪明的选择；但如果涉及感情：占有不是爱，给予对方空间反而会让关系更牢固。如果涉及工作：你的专业能力已经积累到了一定程度，现在是巩固而非盲目扩张的时候——但巩固不是拒绝所有新机会。",reversed:"你可能陷入了吝啬或极度匮乏的恐慌中——无论是金钱上的过度节省、感情上的不敢付出，还是时间上的不愿分享。如果你发现自己在收窄一切开销却依然焦虑：可以试着拿出一小笔钱去「流动」——捐给一个你关心的事业，或请一个朋友吃顿饭，让能量循环起来。如果你在关系中感受到对方在「控制」你而不是「珍惜」你：你的感受不是错觉——安全感如果建立在控制上，会反过来控制你。",attributes:"数字 4 —— 四方稳固、秩序与结构，也代表固化和停滞的临界点。元素属土，物质安全感与所有权议题。关联太阳在摩羯座，冬至的静止时刻——万物在稳固中等待新的周期。这对你的问题意味着：你已经建立了某种基础，但需要诚实地问自己——这是安全区还是舒适区？两者看起来很像但性质完全不同。"}},
+  {id:68,filename:"card_68.jpg",name:"星币5",nameEn:"Five of Pentacles",tag:"星币",meaning:"你最近可能挺难的——钱紧、人累、有点冷。但请你回头看一眼：亮着灯的窗户不止一扇，有人在等你敲门。",detail:{imagery:"两个衣衫褴褛的人在风雪中艰难地走着，一个拄着拐杖，一个光着脚。他们路过一扇染色的玻璃花窗——窗里的灯光是暖的，但他们是冷的。教堂的门开着，只是他们还没走进去。这不是被抛弃，是你还没开口。",upright:"你可能正在经历一段物质或情感上的艰难时期——感到被忽视、被冷落、资源匮乏，但关键在于：帮助就在附近，只是你暂时看不清。结合你的问题来看，如果你在财务上有压力：请放下羞耻感去寻求帮助，无论是向家人开口、申请补助，还是找一位理财顾问——穷途末路的感觉往往是暂时的，但孤立会使它延长。如果涉及感情：你感到的「不被爱」可能不是真相，而是你拒绝看见那些以你不熟悉的方式呈现的关心。抬起头，光就在附近。",reversed:"最艰难的时刻即将过去，但你首先需要认识到自己其实并不孤单。如果你长期沉浸在被排斥或被遗弃的情绪中：可以尝试一个具体的行动——今天就去联系一个老朋友，或加入一个社群，哪怕只是在群里说一句「最近不太好」。如果你已经处于恢复期却发现不敢重新投入生活：从小处开始——先去一次免费的社区活动，或去图书馆坐一个下午。星币5逆位最大的启示是：匮乏的感觉不等于匮乏的事实，你比自己以为的更富有。",attributes:"数字 5 —— 危机、冲突与不稳定，但也代表转折与变化的前夜。元素属土，然而这张牌中土被冰雪覆盖——物质安全感遭遇严峻考验。关联水星在金牛座，思维被实际困境钳制。这对你的问题意味着：你当前的困境并非永久状态，它是通往更深层安全感的一道门——但你需要先承认自己需要帮助。"}},
+  {id:69,filename:"card_69.jpg",name:"星币6",nameEn:"Six of Pentacles",tag:"星币",meaning:"你手里有多的，分一点出去——不是施舍，是流通。你给出去的东西会用另一种方式再回到你这儿。",detail:{imagery:"一个穿着讲究的人一手掂着天平，一手在给面前跪着的两个人分发金币。天平是平衡的，表情是平和的。这不是富豪的怜悯，是资源流动的画面——有钱出钱，有力的出力，有需要的人被照顾到了。",upright:"你处于一个能够给予、也有能力接受的平衡位置——这是星币牌组中最「流动」的丰盛时刻之一。结合你的问题来看，如果你在财务上比较宽裕：现在是帮助他人的好时机，但要有智慧地给予——不给予会让你自己的能量堵住。如果你处于需要帮助的一方：请练习坦然接受——接受不是示弱，是让宇宙的循环在你身上完成。如果涉及感情或职场：付出与回报正在趋于均衡，你过去种下的善意正在以某种形式回到你这里。",reversed:"你可能在「给」与「拿」之间失衡了——要么过度慷慨导致自己被掏空，要么只进不出让关系变得功利。如果你发现自己一直在帮别人却没人帮你：你可以先暂停对外付出，列一张「我欠自己的清单」——你对自己有多久没有慷慨过了？如果你在关系中处于依附或控制的位置：不平衡的给予早晚会滋生怨恨，今天就可以重新谈判一个更公平的相处模式。",attributes:"数字 6 —— 和谐、复原与分享，是走出冲突后重建秩序的象征。元素属土，资源分配与社会公平的议题。关联月亮在金牛座，情感与物质的交织——给予不只是钱的事，更是心的事。这对你的问题意味着：你需要审视自己在「索取」和「奉献」之间的尺度——天平不偏，丰盛才能持续。"}},
+  {id:70,filename:"card_70.jpg",name:"星币7",nameEn:"Seven of Pentacles",tag:"星币",meaning:"你种下的东西还没冒芽——别挖开来看。耐心一点，该长的都在土里长着。现在需要的是等，不是更多的动作。",detail:{imagery:"一个人拄着锄头站在花园里，看着一株长满金币的植物——但他的手没在摘，只是在看。地上还有六枚金币散落着。这就是「等结果的阶段」——不能催，只能守。你已经做了该做的，现在交给时间。",upright:"你正在对过去的投入做一次深刻的评估——这是我该继续还是调整的时刻。结合你的问题来看，你的付出不会白费，但你也许需要重新定义「收获」长什么样。如果涉及事业或学业：你已经在一个项目或方向上投入了相当的时间，现在停下来看看——方向对吗？需要换方法吗？暂停不是放弃，是校准。如果涉及感情：你在这段关系中的投入有没有得到相应的回应？这不是算计，而是诚实。星币7鼓励你怀着耐心去盘点，而非在疲惫中仓促做决定。",reversed:"你可能在焦虑中过早放弃了还没成熟的果实，或者在明明该换方向的时候还在硬撑。如果你觉得自己「投入了那么多却什么也没得到」：先把投入列出来——你会发现有些投入其实是方向跑偏了，而不是总量不够。如果你因为看不到即时回报就频繁换方向：浅挖二十口井不如深挖一口，你可以选定一个项目给它一个不可打断的三个月期限，再做判断。",attributes:"数字 7 —— 反思、评估与内省的精神转折点。元素属土，但加入了「等果实成熟」的时间维度——这是土象牌组中最需要耐心的一张。关联土星在金牛座，带来「慢但稳」的严肃智慧。这对你的问题意味着：答案不会在明天出现，但你今天的回顾与调整决定了最终果实的甜度。"}},
+  {id:71,filename:"card_71.jpg",name:"星币8",nameEn:"Eight of Pentacles",tag:"星币",meaning:"你在打磨一门手艺——重复、枯燥、但有效。这种一天又一天的基本功，最后会变成别人拿不走的东西。继续敲。",detail:{imagery:"一个人坐在长凳上，面前有八枚金币排成展示架——他在雕琢第九枚。他手里拿着锤子和刻刀，表情专注。墙上挂着已经完成的几枚——每一枚都精致。这就是「工匠状态」：不炫技，不出声，但手里的活越来越细。",upright:"你正处在一个需要「刻意练习」的阶段——不是灵光一闪的天才表演，而是一遍又一遍的打磨。结合你的问题来看，这个时期的单调和重复恰恰是你最珍贵的资产。如果涉及技能或学业：把大目标拆成每天可以完成的小单元，今天的八分之一比明天的一整块更真实。如果涉及工作：不必急着展示，先把手上的事情做到你自己都挑不出毛病——真正的专业不是别人看到的时候才发光。如果涉及感情：日复一日的细微关怀比偶尔的盛大浪漫更有分量，爱也是一种手艺。",reversed:"你可能陷入了无意义的重复——忙碌但没进步，或者在用「完美主义」逃避展示和交付。如果你发现自己在同一条路上走了很久却没有升级：你可以换个维度去挑战自己——跨出熟悉的范围才能打破瓶颈。如果你因为怕被评价而一直不发布自己的作品：你可以设定一个硬性的截止日期，到了那一天不管满不满意都放出去——完美主义是星币8逆位的甜蜜陷阱。",attributes:"数字 8 —— 力量的循环、结构与技艺的精熟。元素属土，匠人精神与踏实积累。对应太阳在处女座，细节力、服务意识与精益求精的驱动力——这张牌是处女座能量的绝佳代言。这对你的问题意味着：没有捷径，但每一步都不会白走——你正在构建的不是一个作品，而是一种不可替代的「手」。"}},
+  {id:72,filename:"card_72.jpg",name:"星币9",nameEn:"Nine of Pentacles",tag:"星币",meaning:"你靠自己做到了——不靠任何人。现在你可以优雅地享受自己的劳动成果。逛逛、买买、或者就坐着发个呆，都是应得的。",detail:{imagery:"一个穿着华丽长裙的女生站在繁茂的葡萄藤花园里，一只手上停着一只戴着头罩的猎鹰。她身后有九枚金币散落在草地和藤蔓间。她的表情是那种「我自己挣的，我慢慢享受」的从容——不需要炫耀，因为不差。",upright:"你正站在一个「可以满足」的位置——不一定是最富有的，但你已经拥有了属于自己的丰盛。结合你的问题来看，现在是享受劳动果实的时候，而不是继续奔波追逐。如果涉及财务：你之前的积累已经为你打开了一个可以喘息的空间，允许自己享受它。如果涉及感情：独立的你本身就是完整的，不需要用一段关系来填补缺口——而正因如此，你吸引的关系质量会更高。如果涉及事业：你的专业能力已经足以让你「挑工作」而非「找工作」，维护这份尊严比扩张版图更重要。",reversed:"你可能在用外在的华丽掩饰内在的空虚，或者在过度追求财务独立的过程中把情感隔离了出去。如果你发现自己「什么都有了却还是不开心」：你可以试着把物质层面的满足感暂时放一放，去探索那些不花钱但让你沉浸的东西——散步、写作、学一首曲子。如果因为害怕依赖而拒绝所有亲密：你可以从最小的信任练习开始——找一个安全的人，跟他说一件你不需要帮助但想被倾听的事。",attributes:"数字 9 —— 接近完成、收获前的最后一个台阶，代表成熟、自足与内化的丰盛。元素属土，是土象能量的高阶展现——物质的充裕带来了精神的从容。关联金星在处女座，感官享受与精致生活的和谐统一。这对你的问题意味着：答案指向的是「享受」而不是「更多」——你要的已经够了，关键是你有没有允许自己去感受这份「够」。"}},
+  {id:73,filename:"card_73.jpg",name:"星币10",nameEn:"Ten of Pentacles",tag:"星币",meaning:"家底厚了，人稳了。这不是一朝一夕的运气，是一代一代攒下来的——你可能就是那个「把根扎稳」的人。",detail:{imagery:"一个白胡子老头坐在拱门下，披着绣满葡萄和星币图案的大袍子。他身边站着一对男女和两个小孩，还有两只狗在脚边。拱门上挂着十枚金币排成生命之树的形状。这就是「家族传承」的画面——不是多有钱，是根基深。",upright:"你关注的不是眼前的小利，而是一种可以传承的、持久的富足——无论是财富、家族传统还是精神遗产。结合你的问题来看，你现在的选择不只影响你自己，也会影响你身边的人——这是一种成熟的责任意识。如果涉及财务：考虑长期的资产配置而非短线投机，买一套房、设立教育基金——这些看似遥远的事正是星币10的能量。如果涉及家庭：花时间去了解你的家族史，或者与年长的亲人做一次深入对话——你继承的不只是基因，还有未被说出的智慧。",reversed:"你可能在承受家族负担的压力——比如被期待走某条路、继承某种模式，或者因为家庭问题而感到被拖累。如果你感到「沉重的家族责任压得喘不过气」：你可以先区分哪些是真正的责任、哪些是他人未经你同意就给你的剧本——你不是必须演完它。如果你在财务上过度依赖原生家庭：独立的第一步不是搬出去住，而是在一张纸上写下你的所有收入与支出，找到那个可以「自己说了算」的第一个支点。",attributes:"数字 10 —— 完成、圆满与一个周期的终结，也意味着下一个循环即将开始。元素属土，物质世界的终极成就与传承。关联水星在处女座，细节与长线规划的智慧交织。这对你的问题意味着：你正在建立的东西比你想象的要大——它可能在你离开之后依然滋养着后来的人。"}},
+  {id:74,filename:"card_74.jpg",name:"星币侍从",nameEn:"Page of Pentacles",tag:"星币",meaning:"把书翻开、把工具拿起来——一个学习新技能的机会正在靠近。别嫌慢，扎实的东西从来不是速成的。",detail:{imagery:"一个年轻人站在田野里，双手捧着一枚金币仔细端详——表情像个刚发现新大陆的小孩。背后是开阔的蓝天和远山。这就是「刚入门的新手」——什么都不懂但充满好奇，而这恰好是最好的开始姿态。",upright:"你正以初学者的心态进入一个与物质、技能或健康相关的新阶段——这可能是报了一门课程、开始了理财计划或启动了健身目标。结合你的问题来看，现在的你不必急着出成果，好奇心就是你最大的资产。如果在学业或技能上：像一块海绵一样去吸收，不要因「起步晚」而焦虑——星币侍从的魔法在于他不知道自己「应该」会什么，所以他什么都敢学。如果在财务上：开始记账、研究投资基础知识，这些微小的起步会在复利中长大。",reversed:"你可能因为害怕失败而迟迟不开始学习新事物，或者学习了一堆知识却从未实践——像一个一直在看菜谱却从不开火的人。如果你觉得「学不会」或「太晚了」：你可以把目标从「学会」降级为「玩一玩」，降低门槛的魔法会消除起步的阻力。如果你学了很多却觉得没用上：选一个你学过的知识点，今天就用它在现实里做一件事——哪怕只是用新学的理财公式算了一下自己的存款利息。",attributes:"属于宫廷牌侍从位阶，代表土元素中最纯粹的学习者姿态——务实、专注且对世界充满新鲜感。侍从对应的年龄或心态是16-22岁的少年，拥有土地的承诺与认真的品质。占星上关联摩羯座与金牛座交接的地带。这对你的问题意味着：答案指向「开始学习」而非「已经有答案」——你可以允许自己在某些领域暂时是无知的，因为无知是学习最好的起点。"}},
+  {id:75,filename:"card_75.jpg",name:"星币骑士",nameEn:"Knight of Pentacles",tag:"星币",meaning:"慢，但稳。你不需要跑得最快，你只需要每一步都踩实。把一件事做好，好过把十件事做到六十分。",detail:{imagery:"一个全副盔甲的骑士骑在一匹大黑马上，举着一枚金币而不是剑——他不是来打仗的，他是来耕地的。马没在跑，在慢慢走。背景是才翻新的田地。这就是「不赶时间」的步伐——不是慢，是重。",upright:"你正以一种不可动摇的节奏朝向目标前进——不快，但谁也拦不住。结合你的问题来看，这是「龟兔赛跑」中乌龟的能量：稳定的、每日推进的、不需要外界欢呼的坚持。如果涉及事业或项目：制订一个按周甚至按月的推进计划，不要被周围「快速成功」的故事干扰——你的节奏是对的。如果涉及感情：你不是善于甜言蜜语的人，但你的可靠和说到做到会为关系打下钢筋混凝土般的基础。继续做你正在做的事，只是继续。",reversed:"你可能陷入了顽固不化的僵局——要么太慢以至于错过了时机，要么太执着于「按部就班」而拒绝必要的变通。如果你觉得自己的努力像推一堵墙一样没有回响：你可以退一步检查方向——有时候不是走得不够用力，是墙后面本来就没有你要的东西。如果你因为害怕风险而完全不做任何改变：你可以做一个极小的试验——把你日常routine中的一件事颠倒过来做，比如换一条通勤路线、换一个晨间习惯的顺序，微小的紊乱会打破僵化的惯性。",attributes:"属于宫廷牌骑士位阶，代表土元素的中坚执行者——将理念落地为行动，将蓝图转化为现实。骑士对应的年龄或心态约在23-30岁，拥有方法论和耐力。占星上关联金牛座的耐心与摩羯座的自律。这对你的问题意味着：速度不是关键，方向和方法才是——你是不是在用正确的方式走向正确的目标？"}},
+  {id:76,filename:"card_76.jpg",name:"星币王后",nameEn:"Queen of Pentacles",tag:"星币",meaning:"你善于把资源变成安全感——你照顾别人的方式不是嘴上说说，是实打实的。不过别忘了，你也是需要被照顾的那个人。",detail:{imagery:"一个穿红色长袍的女性坐在王座上，双手在胸前捧着一枚大金币，眼神温柔但专注。她周围是盛开的花和绿植，座下还有一只小兔子。整个画面散发着「妈妈种的菜园子」的气息——踏实、温暖、不浮夸。",upright:"你正在以一种充满爱意的方式照料身边的人、项目和资源——你给的不只是钱和时间，更是一种让人感到安全和被滋养的能量。结合你的问题来看，这是「养育者」的原型时刻。如果涉及家庭或感情：你是那个让一切安稳运转的人，但别忘了把自己也纳入照料的范围——空杯子倒不出水。如果涉及财务：你的管理风格是实用而温暖的——善于把钱花在真正提升生活品质的地方，而非空洞的炫耀。如果涉及事业：善用你「看见别人需要什么」的天赋，这种能力在职场上比任何硬技能都稀缺。",reversed:"你可能在过度付出中掏空了自己，也可能走到了另一个极端——过于注重物质舒适而忽略了情感温度。如果你觉得「所有人都依赖我却没人照顾我」：你可以开始练习在别人提要求之前先说出自己的需要——你不说，没有人该猜到。如果你因为忙于照顾家庭而牺牲了自己的事业或兴趣：一周划出固定的「自我时间」，把它像最重要的会议一样写在日历上，不容任何人占用。",attributes:"属于宫廷牌王后位阶，代表水（母性滋养）与土（物质丰盛）的完美结合。王后对应的年龄或心态在30-45岁之间，拥有成熟的给予智慧。占星上关联摩羯座到金牛座的整个土象光谱——兼具摩羯的规划力和金牛的享受力。这对你的问题意味着：答案指向一种「滋养」的品质——你需要的不是更累地追逐，而是更智慧地照顾自己与他人。"}},
+  {id:77,filename:"card_77.jpg",name:"星币国王",nameEn:"King of Pentacles",tag:"星币",meaning:"你在地面上已经站稳了——物质层面的事你搞得定。现在有余力了，可以抬头看看更高处：你的经验能帮到谁？",detail:{imagery:"一个成熟的男人坐在王座上，脚边堆满了金币和葡萄，披风上绣满了星币图案。他的表情不是得意，是「我赚够了，接下来做点更有意思的事吧」的那种笃定。背后是城堡和田野——他建的东西，实实在在。",upright:"你已经或正在成为一个领域的权威——不是因为头衔，而是因为经年累月的实战累积让你拥有了无可替代的判断力。结合你的问题来看，现在是「以主人身份行事」而非「以学徒身份取悦」的时刻。如果涉及事业或财务：你的决策是成熟而务实的——相信自己的判断，不必四处求证。你现在有能力去成为一个指导者，帮别人成功也会让你更成功。如果涉及感情：你的价值不在于讨好而在可靠——像一座不会动摇的山，给予而非索取安全感。",reversed:"你可能在用「成功」的外壳掩盖内心的空虚，或者变成了一个唯利是图的、冰冷的权威形象——所有人都怕你但没有人爱你。如果你发现自己的全部身份认同都与财富和地位绑定：你可以花一周时间，什么「正事」都不做，去探索那些不产生收益但让你心动的体验——你的价值不等于你的净值。如果你在领导和家庭中过于专制：练习在一件小事上放手——让别人用他的方式做一件你本来想自己来的事，然后忍住不插手也不点评。",attributes:"属于宫廷牌国王位阶，代表土元素的终极成熟形态——不是拥有最多的人，而是最知道自己拥有什么、并能善用它们的人。国王对应的年龄或心态在45岁以上，拥有全局的视野和从容的掌控力。占星上关联金牛座与摩羯座的最高阶整合——既有金牛的富足感知也有摩羯的建构伟力。这对你的问题意味着：答案指向「以经验为王的判断力」——你不需要更多信息，你需要相信自己的判断。"}},
+];
+
+// ==================== 每日一牌初始化 ====================
+initDailyCard();
+
+// ==================== 音效系统 ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playFlip() {
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.type = 'sine'; o.frequency.setValueAtTime(800, audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.08);
+  o.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+  g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+  o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.2);
+}
+function playSelect() {
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.type = 'triangle'; o.frequency.setValueAtTime(523, audioCtx.currentTime);
+  g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+  o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.4);
+  setTimeout(() => {
+    const o2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    o2.connect(g2); g2.connect(audioCtx.destination);
+    o2.type = 'triangle'; o2.frequency.setValueAtTime(659, audioCtx.currentTime);
+    g2.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    g2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    o2.start(audioCtx.currentTime); o2.stop(audioCtx.currentTime + 0.5);
+  }, 120);
+}
+function playComplete() {
+  ensureAudio();
+  [523, 659, 784, 1047].forEach((freq, i) => {
+    setTimeout(() => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+      o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.6);
+    }, i * 150);
+  });
+}
+
+// ==================== 粒子背景 ====================
+(function initParticles() {
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * 2 + 0.5,
+      dx: (Math.random() - 0.5) * 0.3,
+      dy: (Math.random() - 0.5) * 0.3,
+      opacity: Math.random() * 0.6 + 0.2,
+      pulse: Math.random() * Math.PI * 2,
+      color: Math.random() > 0.7 ? '#c9a96e' : '#8a6abf'
+    });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.dx; p.y += p.dy;
+      p.pulse += 0.02;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      const o = p.opacity * (0.5 + 0.5 * Math.sin(p.pulse));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = o;
+      ctx.fill();
+      if (p.r > 1.5) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = o * 0.15;
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ==================== DOM 引用 ====================
+const track = document.getElementById('cards-track');
+const tableWrap = document.getElementById('table-wrap');
+const drawInfo = document.getElementById('remaining');
+const resultOverlay = document.getElementById('result-overlay');
+const resultDetails = document.getElementById('result-details');
+const resultQuestion = document.getElementById('result-question');
+const resultSource = document.getElementById('result-source');
+const aiLoading = document.getElementById('ai-loading');
+const questionArea = document.getElementById('question-area');
+const questionForm = document.getElementById('question-form');
+const questionDisplay = document.getElementById('question-display');
+const questionInput = document.getElementById('question-input');
+const questionText = document.getElementById('question-text');
+const startBtn = document.getElementById('start-btn');
+const changeQBtn = document.getElementById('change-q-btn');
+const topBar = document.getElementById('top-bar');
+const bottomBar = document.getElementById('bottom-bar');
+const hintEl = document.getElementById('hint');
+
+// API 设置 DOM
+const apiToggle = document.getElementById('api-toggle');
+const apiPanel = document.getElementById('api-panel');
+const apiEndpointInput = document.getElementById('api-endpoint');
+const apiKeyInput = document.getElementById('api-key');
+const apiSaveBtn = document.getElementById('api-save-btn');
+const apiStatus = document.getElementById('api-status');
+const apiDot = apiToggle.querySelector('.dot');
+
+let drawCount = 3;
+let selectedCards = [];
+let deckCards = [];
+let deckData = [];
+let gameStarted = false;
+
+// ==================== API 设置 ====================
+function updateApiUI() {
+  if (apiEndpoint && apiKey) {
+    apiDot.className = 'dot on';
+    apiToggle.classList.add('active');
+    apiStatus.textContent = '已配置';
+    apiStatus.style.color = '#6fcf97';
+  } else if (apiEndpoint || apiKey) {
+    apiDot.className = 'dot off';
+    apiToggle.classList.remove('active');
+    apiStatus.textContent = '配置不完整';
+    apiStatus.style.color = '#c9a96e';
+  } else {
+    apiDot.className = 'dot off';
+    apiToggle.classList.remove('active');
+    apiStatus.textContent = '';
+    apiStatus.style.color = '#8a7a8a';
+  }
+}
+
+if (apiEndpoint) apiEndpointInput.value = apiEndpoint;
+if (apiKey) apiKeyInput.value = apiKey;
+updateApiUI();
+
+apiToggle.addEventListener('click', () => {
+  apiPanel.classList.toggle('show');
+});
+
+apiSaveBtn.addEventListener('click', () => {
+  apiEndpoint = apiEndpointInput.value.trim();
+  apiKey = apiKeyInput.value.trim();
+  try {
+    localStorage.setItem('tarot_api_endpoint', apiEndpoint);
+    localStorage.setItem('tarot_api_key', apiKey);
+  } catch(e) {}
+  updateApiUI();
+  apiStatus.textContent = apiEndpoint && apiKey ? '✓ 已保存' : '已保存';
+  apiStatus.style.color = apiEndpoint && apiKey ? '#6fcf97' : '#c9a96e';
+  setTimeout(() => updateApiUI(), 1500);
+});
+
+// 免费模型一键配置
+document.getElementById('api-free-btn').addEventListener('click', () => {
+  apiEndpointInput.value = 'https://api.siliconflow.cn/v1/chat/completions';
+  apiKeyInput.value = '';
+  apiKeyInput.placeholder = '在此粘贴你的硅基流动 API Key（免费注册获取）';
+  apiKeyInput.focus();
+  apiStatus.textContent = '请填入免费 API Key';
+  apiStatus.style.color = '#c9a96e';
+});
+
+// 回车保存 API 设置
+apiEndpointInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') apiSaveBtn.click();
+});
+apiKeyInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') apiSaveBtn.click();
+});
+
+// ==================== 问题输入 ====================
+function startGame() {
+  const q = questionInput.value.trim();
+  if (!q) {
+    questionInput.focus();
+    questionInput.style.borderColor = '#c9565e';
+    questionInput.style.boxShadow = '0 0 14px rgba(201,86,94,0.35)';
+    setTimeout(() => {
+      questionInput.style.borderColor = '#8a6abf';
+      questionInput.style.boxShadow = '';
+    }, 800);
+    return;
+  }
+  userQuestion = q;
+  questionText.textContent = q;
+  questionArea.classList.add('compact');
+  topBar.classList.add('compact-qa');
+  tableWrap.classList.add('compact-qa');
+  gameStarted = true;
+
+  topBar.style.display = '';
+  tableWrap.style.display = '';
+  bottomBar.style.display = '';
+  hintEl.style.display = '';
+
+  initDeck();
+}
+
+function resetQuestion() {
+  gameStarted = false;
+  userQuestion = '';
+  questionInput.value = '';
+  questionArea.classList.remove('compact');
+  topBar.classList.remove('compact-qa');
+  tableWrap.classList.remove('compact-qa');
+
+  topBar.style.display = 'none';
+  tableWrap.style.display = 'none';
+  bottomBar.style.display = 'none';
+  hintEl.style.display = 'none';
+  resultOverlay.classList.remove('show');
+
+  track.innerHTML = '';
+  selectedCards = [];
+  deckCards = [];
+  deckData = [];
+  updateInfo();
+
+  setTimeout(() => questionInput.focus(), 400);
+}
+
+startBtn.addEventListener('click', startGame);
+questionInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startGame();
+});
+changeQBtn.addEventListener('click', resetQuestion);
+
+topBar.style.display = 'none';
+tableWrap.style.display = 'none';
+bottomBar.style.display = 'none';
+hintEl.style.display = 'none';
+
+// ==================== 初始化牌组 ====================
+function initDeck() {
+  if (!gameStarted) return;
+  track.innerHTML = '';
+  selectedCards = [];
+  resultOverlay.classList.remove('show');
+  document.getElementById('summary-3').style.display = 'none';
+  document.getElementById('summary-5').style.display = 'none';
+  const oldBtns = document.querySelector('#result-details > .result-actions');
+  if (oldBtns) oldBtns.remove();
+  updateInfo();
+
+  deckData = [...TAROT].sort(() => Math.random() - 0.5);
+  deckCards = [];
+
+  deckData.forEach((card, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'card-slot selectable';
+    slot.dataset.index = i;
+
+    slot.innerHTML = `
+      <div class="card-inner">
+        <div class="card-back"></div>
+        <div class="card-face"><img src="photo/${card.filename}" alt="${card.name}" draggable="false"></div>
+      </div>
+    `;
+
+    slot.addEventListener('click', () => {
+      if (slot.classList.contains('flipped')) return;
+      if (selectedCards.length >= drawCount) return;
+      selectCard(slot, card);
+    });
+
+    track.appendChild(slot);
+    deckCards.push(slot);
+  });
+
+  tableWrap.scrollTop = 0;
+}
+
+function selectCard(slot, card) {
+  slot.classList.remove('selectable');
+  // ① 弹出动画
+  slot.classList.add('popping');
+  playFlip();
+  selectedCards.push({ slot, card });
+
+  // ② 延时翻转 + 金色光扫
+  setTimeout(() => {
+    slot.classList.add('flipped');
+  }, 200);
+
+  // ③ 翻面完成后淡化
+  setTimeout(() => {
+    slot.style.opacity = '0.5';
+    slot.style.transform = 'scale(0.88)';
+  }, 900);
+
+  playSelect();
+  updateInfo();
+
+  if (selectedCards.length >= drawCount) {
+    setTimeout(showResult, 1200);
+  }
+}
+
+function updateInfo() {
+  const rem = drawCount - selectedCards.length;
+  drawInfo.textContent = rem > 0 ? `请选择 ${rem} 张牌` : '正在解读命运…';
+}
+
+// ==================== 结果展示 ====================
+const MODULE_ICONS = ['🖼', '✨', '🌙', '🔮'];
+const MODULE_TITLES = ['牌面意象', '正位含义', '逆位含义', '数字·元素·星象'];
+const MODULE_KEYS = ['imagery', 'upright', 'reversed', 'attributes'];
+
+// 构建详情卡片的 DOM（折叠面板 + 占卜结论）
+function buildDetailCard(card, detailData, sourceLabel) {
+  const div = document.createElement('div');
+  div.className = 'result-detail';
+
+  // 占卜结论：取 meaning 作为总结，默认展开高亮
+  const conclusionHTML = `
+    <div class="detail-module conclusion open">
+      <div class="module-header" onclick="toggleModule(this)">
+        <span class="m-icon">✦</span>占卜结论
+        <span class="m-arrow">▸</span>
+      </div>
+      <div class="module-body">
+        <p>${card.meaning}</p>
+      </div>
+    </div>`;
+
+  let modulesHTML = '';
+  if (detailData) {
+    MODULE_KEYS.forEach((key, i) => {
+      if (detailData[key]) {
+        modulesHTML += `
+          <div class="detail-module">
+            <div class="module-header" onclick="toggleModule(this)">
+              <span class="m-icon">${MODULE_ICONS[i]}</span>${MODULE_TITLES[i]}
+              <span class="m-arrow">▸</span>
+            </div>
+            <div class="module-body">
+              <p>${detailData[key]}</p>
+            </div>
+          </div>`;
+      }
+    });
+  } else {
+    modulesHTML = `
+      <div class="detail-module open">
+        <div class="module-header" onclick="toggleModule(this)">
+          <span class="m-icon">📖</span>牌义解读
+          <span class="m-arrow">▸</span>
+        </div>
+        <div class="module-body">
+          <p>${card.meaning}</p>
+        </div>
+      </div>
+      <div class="detail-module" style="opacity:0.5;">
+        <div class="module-body" style="max-height:200px;padding:8px 12px;">
+          <p style="color:#8a7a8a;font-style:italic;">（此牌详细解析尚未录入，敬请期待）</p>
+        </div>
+      </div>`;
+  }
+
+  div.innerHTML = `
+    <div class="detail-layout">
+      <div class="detail-image-col">
+        <img src="photo/${card.filename}" alt="${card.name}">
+        <div class="detail-tag">${card.tag || '塔罗'}</div>
+      </div>
+      <div class="detail-content-col">
+        <div class="detail-header-info">
+          <div class="detail-header-name">${card.name}<button class="fav-star${favorites.some(f => f.id === card.id) ? ' active' : ''}" onclick="event.stopPropagation();toggleFavorite({id:${card.id},name:'${card.name.replace(/'/g,"\\'")}',nameEn:'${(card.nameEn||'').replace(/'/g,"\\'")}',filename:'${card.filename}',tag:'${card.tag||'塔罗'}',meaning:'${card.meaning.replace(/'/g,"\\'")}'},this)">${favorites.some(f => f.id === card.id) ? '★' : '☆'}</button></div>
+          <div class="detail-header-en">${card.nameEn || ''}</div>
+        </div>
+        <div class="detail-modules">${conclusionHTML}${modulesHTML}</div>
+      </div>
+    </div>`;
+
+  return div;
+}
+
+// ==================== 综合分析 ====================
+function generateFallbackSummary() {
+  const cards = selectedCards.map(sc => sc.card);
+  const count = cards.length;
+  const aspects = count === 5
+    ? ['感情', '事业', '健康', '人际关系', '自我成长']
+    : ['感情', '事业', '心态'];
+
+  // --- 生成总览 ---
+  const tagMap = {
+    '大阿尔卡纳': '人生大课题',
+    '权杖': '行动和冲劲', '圣杯': '情感和直觉',
+    '宝剑': '思考和抉择', '星币': '现实和积累'
+  };
+  const tags = [...new Set(cards.map(c => c.tag))];
+  const tagDesc = tags.map(t => tagMap[t] || t).join('、');
+  const cardNames = cards.map(c => c.name).join('、');
+
+  const overviewTemplates = [
+    `你抽到的${count}张牌——${cardNames}——恰好串成了一条线。它们分别对应着${tagDesc}这几个层面，放在一起看，像是在告诉你：眼下这件事不是单一维度的，它牵动着你好几个方向。别急，我们一起拆开看看。`,
+    `这${count}张牌放在一起挺有意思的——${cardNames}。它们不是在各自说各自的，而是在合奏一首曲子，主题就是你现在心里最在意的这件事。${tagDesc}这几股能量都在桌面上，关键看你怎么把它们整合起来。`,
+    `${cardNames}——这三张牌像三个老朋友，一人说了一句。连起来听，其实是一个完整的故事：你要面对的不只是表面那件事，还有背后${tagDesc}的拉扯。下面分开聊聊，看看每块该怎么想。`
+  ];
+  const overview = overviewTemplates[Math.floor(Math.random() * overviewTemplates.length)];
+
+  // --- 生成各方面建议 ---
+  const advice = aspects.map((aspect, i) => {
+    // 选一张与这个方面最相关的牌
+    const card = cards[i % cards.length];
+    const meaningShort = card.meaning.replace(/[。！？]$/, '').slice(0, 30);
+    return { aspect, content: buildAspectAdvice(aspect, card, meaningShort) };
+  });
+
+  return { overview, advice };
+}
+
+function buildAspectAdvice(aspect, card, meaningShort) {
+  const templates = {
+    '感情': [
+      `${card.name}在这里提醒你：感情的事，${meaningShort}。别把对方想得太复杂，有时候你纠结半天的东西，对方可能根本没在意。把自己的感受放在第一位不是自私，是负责任。`,
+      `说到感情，${card.name}给的方向很明确——${meaningShort}。如果你有伴，试着用嘴说而不是用心猜。如果你单身，这段时间先把自己哄开心了，对的人会在你不再「找」的时候出现。`,
+      `${card.name}落在感情这一块，意思是：${meaningShort}。关系不是解数学题，没有标准答案。你舒服就是对的，不舒服就提出来——能改的改，改不了的你要想清楚值不值得忍。`
+    ],
+    '事业': [
+      `${card.name}指向你的事業／學業：${meaningShort}。现在不是东张西望的时候——把你手头那一件事做到极致，比同时追十个机会更靠谱。`,
+      `工作／學業方面，${card.name}在说——${meaningShort}。如果你在犹豫要不要换赛道：先问自己，是不喜欢现在做的事，还是不喜欢现在做事的自己。答案不一样，出路也不一样。`,
+      `${card.name}对事业／學業的建议很简单：${meaningShort}。别跟别人比进度，每个人的时区不一样。你只需要确保今天的自己比昨天多往前走了一步——哪怕是很小的一步。`
+    ],
+    '心态': [
+      `${card.name}在心态这块敲了敲你：${meaningShort}。很多时候困住你的不是事情本身，是你脑子里循环播放的那几句台词。把「我不行」换成「我先试试」，故事走向就不一样了。`,
+      `心态上，${card.name}想告诉你——${meaningShort}。允许自己偶尔摆烂、允许自己暂时没有答案。不是每个问题都需要立刻解决，有些事放一放，回头看会发现没那么大不了。`,
+      `${card.name}提醒你调整心态：${meaningShort}。你比自己以为的更有韧性。想想你以前觉得过不去的坎，现在回头看是不是都过去了？这次也一样。`
+    ],
+    '健康': [
+      `${card.name}提到健康，不只是身体——${meaningShort}。最近有没有熬夜？有没有忘了吃饭？身体一直在给你发信号，只是你太忙了没听。今天早睡一小时，比任何保健品都好使。`,
+      `健康方面，${card.name}在说：${meaningShort}。你的身体和情绪是连着的——焦虑会变成胃疼，压抑会变成肩颈僵硬。试着运动一下出出汗，不为了身材，为了让心里的闷气有个出口。`,
+      `${card.name}落在健康上——${meaningShort}。别等到不舒服了才重视。每天十分钟的拉伸、多喝两杯水、正餐好好吃，这些小事攒起来就是你的底子。`
+    ],
+    '人际关系': [
+      `${card.name}在人际关系这块：${meaningShort}。你身边有些人需要你主动迈一步——发个消息、约个饭、或者只是说一句「最近还好吗」。关系是维护出来的，不是等出来的。`,
+      `人际关系方面，${card.name}提醒——${meaningShort}。有些关系该松一松了：如果一个人总是你在主动、你在迁就、你在忍，那这段关系可能不是在滋养你，是在消耗你。`,
+      `${card.name}对人际的启发：${meaningShort}。圈子不在大，在真。有两三个你可以在半夜打电话的人，比一百个点赞之交更有用。如果有，珍惜；如果没有，从做一个值得被深夜打扰的人开始。`
+    ],
+    '自我成长': [
+      `${card.name}在自我成长这块——${meaningShort}。你最近在经历一个「升级」的过程，虽然过程可能不太舒服，但你在变成更好的自己。别因为暂时的混乱就否定自己一路走来的进步。`,
+      `关于自我成长，${card.name}想说的是：${meaningShort}。成长不是变成另一个人，是把原本就有的那部分自己活出来。你不需要成为谁，你只需要成为更完整的你自己。`,
+      `${card.name}给自我成长的提示：${meaningShort}。花点时间做一件「没有任何功利目的」的事——看书、画画、学个乐器、或者就单纯发一下午呆。你灵魂里那些被压住的部分，需要空间才能呼吸。`
+    ]
+  };
+
+  const pool = templates[aspect] || templates['心态'];
+  // 选一个模板，基于card的tag做微调保证不重复
+  const idx = Math.abs(card.id * 7 + aspect.length * 13) % pool.length;
+  return pool[idx];
+}
+
+function showSummary(aiSummary) {
+  const summary3 = document.getElementById('summary-3');
+  const summary5 = document.getElementById('summary-5');
+  summary3.style.display = 'none';
+  summary5.style.display = 'none';
+
+  const target = drawCount === 5 ? summary5 : summary3;
+  if (!target) return;
+
+  const summary = aiSummary || generateFallbackSummary();
+  if (!summary) return;
+
+  // 将 advice 数组转为按 aspect 索引的 map
+  const adviceMap = {};
+  (summary.advice || []).forEach(a => { adviceMap[a.aspect] = a.content; });
+
+  const loveContent    = adviceMap['感情'] || '从感情角度来看，保持真诚和耐心是最好的策略。';
+  const careerContent  = adviceMap['事业'] || '事业方面，专注当下比焦虑未来更重要。';
+  const mindsetContent = adviceMap['心态'] || '心态上，接纳不确定性本身就是一种力量。';
+
+  target.innerHTML = `
+    <div class="summary-card">
+      <div class="summary-card-header">🔮 综合分析</div>
+      <div class="summary-card-body">${summary.overview}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-header">❤️ 感情</div>
+      <div class="summary-card-body">${loveContent}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-header">💼 事业</div>
+      <div class="summary-card-body">${careerContent}</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-header">🧠 心态</div>
+      <div class="summary-card-body">${mindsetContent}</div>
+    </div>
+  `;
+  target.style.display = 'block';
+}
+
+// 折叠面板切换
+function toggleModule(header) {
+  const module = header.parentElement;
+  module.classList.toggle('open');
+}
+
+// 简易模式（全部无 detail 且无 API）
+function buildSimpleCards() {
+  const wrap = document.createElement('div');
+  wrap.id = 'result-cards-simple';
+  selectedCards.forEach(({ card }) => {
+    const div = document.createElement('div');
+    div.className = 'result-card-simple';
+    div.innerHTML = `
+      <img src="photo/${card.filename}" alt="${card.name}">
+      <div class="card-name">${card.name}</div>
+      <div class="card-meaning">${card.meaning}</div>
+    `;
+    wrap.appendChild(div);
+  });
+  return wrap;
+}
+
+// 动态插入按钮到 result 容器末尾
+function insertButtons() {
+  // 清除旧按钮
+  const old = document.querySelector('#result-details > .result-actions');
+  if (old) old.remove();
+
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+  actions.innerHTML = `
+    <button id="share-btn">📥 生成分享图</button>
+    <button id="reshuffle-btn">✦ 重新占卜 ✦</button>
+  `;
+  resultDetails.appendChild(actions);
+}
+
+async function showResult() {
+  playComplete();
+  resultDetails.innerHTML = '';
+  aiLoading.classList.remove('show');
+  resultSource.textContent = '';
+
+  resultQuestion.innerHTML = userQuestion
+    ? `你问的是：<span>${userQuestion}</span>`
+    : '';
+
+  const hasApi = !!(apiEndpoint && apiKey);
+  const hasAnyDetail = selectedCards.some(({ card }) => card.detail);
+
+  // === 路径 1：API 可用 → 调用 AI ===
+  if (hasApi) {
+    aiLoading.classList.add('show');
+    resultOverlay.classList.add('show');
+    resultOverlay.scrollTop = 0;
+
+    try {
+      const response = await callAI(selectedCards.map(sc => sc.card), userQuestion);
+      aiLoading.classList.remove('show');
+
+      if (response && response.cards && response.cards.length > 0) {
+        // API 成功
+        resultSource.textContent = '✨ AI 智能解读';
+        resultSource.style.color = '#6fcf97';
+        response.cards.forEach((apiCard, i) => {
+          const orig = selectedCards[i];
+          const detail = apiCard.detail || null;
+          const card = orig ? orig.card : apiCard;
+          resultDetails.appendChild(buildDetailCard(card, detail, 'AI'));
+        });
+        showSummary(response.summary || null);
+        insertButtons();
+        return;
+      }
+    } catch(e) {
+      console.warn('API 调用失败，降级到静态解析:', e.message);
+      aiLoading.classList.remove('show');
+    }
+  }
+
+  // === 路径 2：降级 → 静态解析 ===
+  if (hasApi) {
+    resultSource.textContent = '⚠ AI 解析暂不可用，展示经典释义';
+    resultSource.style.color = '#c9a96e';
+  }
+
+  if (hasAnyDetail) {
+    selectedCards.forEach(({ card }) => {
+      resultDetails.appendChild(buildDetailCard(card, card.detail || null));
+    });
+  } else {
+    resultDetails.appendChild(buildSimpleCards());
+  }
+
+  showSummary(null);
+  insertButtons();
+  resultOverlay.classList.add('show');
+  resultOverlay.scrollTop = 0;
+}
+
+// ==================== API 调用 ====================
+async function callAI(cards, question) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  const aspects3 = ['感情', '事业', '心态'];
+  const aspects5 = ['感情', '事业', '健康', '人际关系', '自我成长'];
+  const aspects = cards.length === 5 ? aspects5 : aspects3;
+
+  const requestBody = {
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: `你是一位资深塔罗牌解读师，口语化风格，语气像朋友聊天一样温暖自然。请根据用户的问题和抽到的塔罗牌，为每张牌生成4个模块的解析，并生成一个综合分析总结。
+
+返回格式必须为严格JSON：
+{
+  "cards": [
+    {
+      "name": "牌名",
+      "detail": {
+        "imagery": "牌面意象：用大白话描述画面里有什么、给人什么感觉，2-3句话。",
+        "upright": "正位含义：结合用户问题给出个性化解读和行动建议，2-3句话。",
+        "reversed": "逆位含义：警示提醒和转化建议，2-3句话。",
+        "attributes": "数字/元素/星象：说明数字含义、元素属性、关联星座或行星，2-3句话。"
+      }
+    }
+  ],
+  "summary": {
+    "overview": "总体解读：把这${cards.length}张牌串起来说一个完整的故事，2-4句话，口语化、有温度，像朋友帮你分析问题。",
+    "advice": [
+      {"aspect": "${aspects[0]}", "content": "从${aspects[0]}角度给出的具体建议，1-2句口语。"},
+      {"aspect": "${aspects[1]}", "content": "从${aspects[1]}角度给出的具体建议，1-2句口语。"},
+      {"aspect": "${aspects[2]}", "content": "从${aspects[2]}角度给出的具体建议，1-2句口语。"}${cards.length === 5 ? `,
+      {"aspect": "${aspects[3]}", "content": "从${aspects[3]}角度给出的具体建议，1-2句口语。"},
+      {"aspect": "${aspects[4]}", "content": "从${aspects[4]}角度给出的具体建议，1-2句口语。"}` : ''}
+    ]
+  }
+}`
+      },
+      {
+        role: 'user',
+        content: `用户的问题：${question}\n\n抽到的牌（共${cards.length}张）：${cards.map(c => c.name + (c.nameEn ? `（${c.nameEn}）` : '') + (c.tag ? ` [${c.tag}]` : '')).join('、')}\n\n请为每张牌生成完整解析和综合分析。`
+      }
+    ],
+    temperature: 0.8,
+    max_tokens: 4096
+  };
+
+  let response;
+  try {
+    response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) {
+    throw new Error(`API 返回状态 ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('API 响应格式异常');
+  }
+
+  // 尝试提取 JSON
+  const jsonMatch = content.match(/\{[\s\S]*"cards"[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  // 如果整个 content 就是 JSON
+  if (content.trim().startsWith('{')) {
+    return JSON.parse(content);
+  }
+
+  throw new Error('无法解析 API 返回的 JSON');
+}
+
+// ==================== 模式切换 + 牌阵选择 ====================
+let spreadType = '圣三角'; // 当前牌阵名称
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawCount = parseInt(btn.dataset.count);
+    // 同步下拉框
+    const sel = document.getElementById('spread-select');
+    if (sel) sel.value = drawCount;
+    initDeck();
+  });
+});
+
+// 牌阵下拉同步按钮
+document.getElementById('spread-select').addEventListener('change', (e) => {
+  drawCount = parseInt(e.target.value);
+  spreadType = e.target.options[e.target.selectedIndex].text.split(' ·')[0];
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.remove('active');
+    if (parseInt(b.dataset.count) === drawCount) b.classList.add('active');
+  });
+  initDeck();
+});
+
+// ==================== 重新抽牌 ====================
+document.getElementById('reset-btn').addEventListener('click', initDeck);
+
+// 按钮动态插入，用事件委托
+resultOverlay.addEventListener('click', (e) => {
+  if (e.target.id === 'reshuffle-btn') initDeck();
+  if (e.target.id === 'share-btn') generateShareImage();
+});
+
+function generateShareImage() {
+  const W = 800, pad = 40, innerW = W - pad * 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+
+  // 计算高度
+  let cardTexts = [];
+  selectedCards.forEach(({ card }) => {
+    cardTexts.push({ name: card.name, meaning: card.meaning });
+  });
+  const linesPer = cardTexts.map(c => {
+    const n = Math.ceil(ctx_measure(c.meaning, innerW - 20, '16px Georgia'));
+    return n;
+  });
+  const cardH = cardTexts.map((c, i) => 60 + linesPer[i] * 26 + 30);
+  const totalCardH = cardH.reduce((a, b) => a + b, 0);
+  const H = 120 + 40 + 50 + 40 + (userQuestion ? 80 : 0) + totalCardH + 80 + 60;
+  canvas.height = H;
+
+  const ctx = canvas.getContext('2d');
+
+  function ctx_measure(text, maxW, font) {
+    ctx.font = font;
+    const words = text.split('');
+    let lines = 1, line = '';
+    for (let i = 0; i < words.length; i++) {
+      const test = line + words[i];
+      if (ctx.measureText(test).width > maxW && line.length > 0) {
+        lines++;
+        line = words[i];
+      } else { line = test; }
+    }
+    return lines;
+  }
+
+  // 背景
+  ctx.fillStyle = '#1a0a2e';
+  ctx.fillRect(0, 0, W, H);
+
+  // 装饰边框
+  ctx.strokeStyle = '#c9a96e';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(pad, pad, W - pad * 2, H - pad * 2);
+  ctx.strokeStyle = 'rgba(201,169,110,0.3)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(pad + 8, pad + 8, W - pad * 2 - 16, H - pad * 2 - 16);
+
+  // 顶部装饰星
+  function drawStar(cx, cy, r) {
+    ctx.fillStyle = '#c9a96e';
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  drawStar(W / 2, 80, 14);
+
+  // 标题
+  ctx.fillStyle = '#c9a96e';
+  ctx.font = 'bold 28px Georgia, SimSun, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('✦ 神秘塔罗 · 命运启示 ✦', W / 2, 130);
+
+  // 分隔线
+  ctx.strokeStyle = 'rgba(201,169,110,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad + 30, 155);
+  ctx.lineTo(W - pad - 30, 155);
+  ctx.stroke();
+
+  let y = 185;
+
+  // 牌阵
+  if (spreadType) {
+    ctx.fillStyle = '#8a7a8a';
+    ctx.font = '14px Georgia, SimSun, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('牌阵：' + spreadType + ' · ' + selectedCards.length + '张', W / 2, y);
+    y += 35;
+  }
+
+  // 用户问题
+  if (userQuestion) {
+    ctx.fillStyle = '#c9b896';
+    ctx.font = 'bold 16px Georgia, SimSun, serif';
+    ctx.textAlign = 'center';
+    const q = userQuestion.length > 36 ? userQuestion.slice(0, 36) + '…' : userQuestion;
+    ctx.fillText('问：' + q, W / 2, y);
+    y += 45;
+  }
+
+  // 分隔线
+  ctx.beginPath();
+  ctx.moveTo(pad + 60, y - 10);
+  ctx.lineTo(W - pad - 60, y - 10);
+  ctx.stroke();
+  y += 20;
+
+  // 每张牌
+  ctx.textAlign = 'left';
+  cardTexts.forEach((c, i) => {
+    // 牌名
+    ctx.fillStyle = '#c9a96e';
+    ctx.font = 'bold 20px Georgia, SimSun, serif';
+    ctx.fillText('🂠 ' + c.name, pad + 30, y);
+    y += 38;
+
+    // 含义换行
+    ctx.fillStyle = '#c9c0b5';
+    ctx.font = '16px Georgia, SimSun, serif';
+    const words = c.meaning.split('');
+    let line = '';
+    const lh = 26;
+    for (let j = 0; j < words.length; j++) {
+      const test = line + words[j];
+      if (ctx.measureText(test).width > innerW - 20 && line.length > 0) {
+        ctx.fillText(line, pad + 30, y);
+        y += lh;
+        line = words[j];
+      } else { line = test; }
+    }
+    if (line) { ctx.fillText(line, pad + 30, y); y += lh; }
+    y += 16;
+
+    // 卡片间分隔
+    if (i < cardTexts.length - 1) {
+      ctx.strokeStyle = 'rgba(201,169,110,0.15)';
+      ctx.beginPath();
+      ctx.moveTo(pad + 30, y);
+      ctx.lineTo(W - pad - 30, y);
+      ctx.stroke();
+      y += 16;
+    }
+  });
+
+  // 底部
+  y = Math.max(y + 20, H - 70);
+  ctx.fillStyle = '#8a7a8a';
+  ctx.font = '12px Georgia, SimSun, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('— 神秘塔罗 · 命运之牌 —', W / 2, y);
+  y += 26;
+  ctx.fillText(new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }), W / 2, y);
+
+  // 底角装饰星
+  drawStar(pad + 40, H - pad - 30, 6);
+  drawStar(W - pad - 40, H - pad - 30, 6);
+
+  // 下载
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '塔罗占卜_' + new Date().toISOString().slice(0, 10) + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// ==================== 启动 ====================
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loading').classList.add('fade');
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 800);
+    setTimeout(() => questionInput.focus(), 500);
+  }, 600);
+});
+</script>
+</body>
+</html>
